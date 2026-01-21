@@ -10,7 +10,7 @@ Created by: **Eng. Mohammad Abbas Alsaadon**
 
 ## 📋 Overview
 
-Sentinel GRC is an AI-powered platform for managing enterprise governance, risk, and compliance across multiple domains:
+Mizan GRC is an AI-powered platform for managing enterprise governance, risk, and compliance across multiple domains:
 
 - **Cyber Security** - NCA, SAMA, NIST frameworks
 - **Data Management** - NDMO, GDPR, DGA standards
@@ -38,7 +38,7 @@ Sentinel GRC is an AI-powered platform for managing enterprise governance, risk,
 
 ```bash
 # Clone or download the project
-cd sentinel
+cd Mizan
 
 # Create virtual environment (recommended)
 python -m venv venv
@@ -63,7 +63,7 @@ streamlit run app.py
 ## 📁 Project Structure
 
 ```
-sentinel/
+Mizan/
 ├── app.py                  # Main application entry point
 ├── config.py               # Configuration settings
 ├── requirements.txt        # Dependencies
@@ -123,7 +123,7 @@ sentinel/
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `OPENAI_API_KEY` | OpenAI API key for AI features | None (simulation mode) |
-| `SENTINEL_ADMIN_PASSWORD` | Admin account password | admin123 |
+| `Mizan_ADMIN_PASSWORD` | Admin account password | admin123 |
 
 ### Application Config (config.py)
 
