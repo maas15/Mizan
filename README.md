@@ -1,4 +1,4 @@
-# 🛡️ Sentinel GRC
+# 🛡️ Mizan
 
 **Enterprise Governance, Risk & Compliance Operating System**
 
