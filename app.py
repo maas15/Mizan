@@ -53,44 +53,95 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 # =============================================================================
-# IMPORTS - Try enhanced versions first, fall back to original
+# IMPORTS - Each import block separated for better error handling
 # =============================================================================
 
+# Core config
 try:
     from config import config, security_config, domain_config
+except ImportError as e:
+    print(f"❌ Config import error: {e}")
+    raise
+
+# Database services
+try:
     from services.db_service import db_service, user_repo, risk_repo, project_repo, audit_log, stats_service
+except ImportError as e:
+    print(f"❌ Database service import error: {e}")
+    raise
+
+# Security utilities
+try:
     from utils.security import password_hasher, password_validator, rate_limiter, input_sanitizer
+except ImportError as e:
+    print(f"❌ Security utils import error: {e}")
+    raise
+
+# Text processing
+try:
     from utils.text_processing import pdf_extractor, text_processor, roadmap_parser
+except ImportError as e:
+    print(f"❌ Text processing import error: {e}")
+    raise
+
+# Validation
+try:
     from utils.validation import InputValidator, FormValidator, DataValidator, FileValidator
+except ImportError as e:
+    print(f"❌ Validation import error: {e}")
+    raise
+
+# Frameworks
+try:
     from data.frameworks import get_framework_pack
+except ImportError as e:
+    print(f"❌ Frameworks import error: {e}")
+    raise
+
+# UI Components
+try:
     from components.ui_components import (
         load_css, load_rtl_css, metric_card, disclaimer_box,
         login_footer, api_status_indicator, password_strength_indicator, render_validation_errors
     )
-    
-    # Try enhanced versions
+except ImportError as e:
+    print(f"❌ UI components import error: {e}")
+    raise
+
+# AI Service - try enhanced first
+try:
+    from services.ai_service_v2 import ai_service, ResponseType
+    print("✅ Using enhanced AI service")
+except ImportError:
     try:
-        from services.ai_service_v2 import ai_service, ResponseType
-        print("✅ Using enhanced AI service")
-    except ImportError:
         from services.ai_service import ai_service, ResponseType
         print("⚠️ Using standard AI service")
-    
+    except ImportError as e:
+        print(f"❌ AI service import error: {e}")
+        raise
+
+# Risk Data - try enhanced first
+try:
+    from data.risk_data_v2 import get_risk_data
+    print("✅ Using enhanced risk data")
+except ImportError:
     try:
-        from data.risk_data_v2 import get_risk_data
-        print("✅ Using enhanced risk data")
-    except ImportError:
         from data.risk_data import get_risk_data
         print("⚠️ Using standard risk data")
-    
+    except ImportError as e:
+        print(f"❌ Risk data import error: {e}")
+        raise
+
+# Translations - try enhanced first
+try:
+    from data.translations_v2 import (
+        get_translation, is_rtl_language, get_tech_options, 
+        get_org_structure_options, get_section_title, TRANSLATIONS
+    )
+    HAS_ENHANCED_TRANSLATIONS = True
+    print("✅ Using enhanced translations")
+except ImportError:
     try:
-        from data.translations_v2 import (
-            get_translation, is_rtl_language, get_tech_options, 
-            get_org_structure_options, get_section_title, TRANSLATIONS
-        )
-        HAS_ENHANCED_TRANSLATIONS = True
-        print("✅ Using enhanced translations")
-    except ImportError:
         from data.translations import get_translation, is_rtl_language, TRANSLATIONS
         HAS_ENHANCED_TRANSLATIONS = False
         print("⚠️ Using standard translations")
@@ -101,11 +152,9 @@ try:
             return ["Standard Structure"]
         def get_section_title(key, lang):
             return key
-
-except ImportError as e:
-    import streamlit as st
-    st.error(f"Import Error: {e}")
-    st.stop()
+    except ImportError as e:
+        print(f"❌ Translations import error: {e}")
+        raise
 
 # =============================================================================
 # PAGE CONFIG
@@ -412,7 +461,7 @@ def render_main_application():
 
 
 def render_strategy_tab(username: str, domain_name: str, logic_code: str, txt: dict, lang_opt: str):
-    """Render strategy pipeline with technology dropdowns."""
+    """Render strategy pipeline with technology dropdowns and download options."""
     step_key = f"step_{logic_code}"
     current_step = SessionManager.get(step_key, 1)
     reg_list = domain_config.get_domain_regulations(domain_name)
@@ -495,6 +544,12 @@ def render_strategy_tab(username: str, domain_name: str, logic_code: str, txt: d
         
         doc_lang = st.selectbox(txt["doc_lang"], txt["doc_opts"], key=f"lang_{logic_code}")
         
+        # Show language instruction
+        if doc_lang in ["Arabic", "العربية"]:
+            st.caption("📝 Strategy will be generated entirely in Arabic (الاستراتيجية ستكون باللغة العربية بالكامل)")
+        elif doc_lang in ["Bilingual", "ثنائي اللغة"]:
+            st.caption("📝 Strategy will be bilingual - English followed by Arabic translation")
+        
         if st.button(txt["btn_gen"], key=f"gen_{logic_code}"):
             with st.spinner("🚀 Generating Big4-Level Strategy..."):
                 gap_summary = {"compliance_score": 75, "gap_count": 5, "top_gap_controls": {"Unified.GOV": 2}}
@@ -537,6 +592,7 @@ def render_strategy_tab(username: str, domain_name: str, logic_code: str, txt: d
                 SessionManager.set(f"out_{logic_code}", out_sections)
                 SessionManager.set(f"roadmap_{logic_code}", roadmap_df)
                 SessionManager.set(f"doc_lang_{logic_code}", actual_lang)
+                SessionManager.set(f"org_name_{logic_code}", inputs.get("org", "Organization"))
                 
                 project_repo.save_roadmap(username, domain_name, roadmap_df)
                 
@@ -549,6 +605,60 @@ def render_strategy_tab(username: str, domain_name: str, logic_code: str, txt: d
         out = SessionManager.get(f"out_{logic_code}", {})
         roadmap_df = SessionManager.get(f"roadmap_{logic_code}", pd.DataFrame())
         doc_lang = SessionManager.get(f"doc_lang_{logic_code}", "English")
+        org_name = SessionManager.get(f"org_name_{logic_code}", "Organization")
+        
+        # Download buttons row
+        st.markdown("### 📥 Download Options")
+        dl_col1, dl_col2, dl_col3 = st.columns(3)
+        
+        with dl_col1:
+            # Strategy DOCX download
+            try:
+                from utils.export_utils import generate_strategy_docx
+                strategy_docx = generate_strategy_docx(org_name, domain_name, out, roadmap_df, doc_lang)
+                if strategy_docx:
+                    st.download_button(
+                        label="📄 Strategy (Word)",
+                        data=strategy_docx,
+                        file_name=f"strategy_{logic_code}_{datetime.now().strftime('%Y%m%d')}.docx",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        key=f"dl_strat_{logic_code}"
+                    )
+            except Exception as e:
+                st.caption(f"Word export unavailable: {e}")
+        
+        with dl_col2:
+            # Roadmap Excel download
+            try:
+                from utils.export_utils import generate_roadmap_excel
+                roadmap_excel = generate_roadmap_excel(roadmap_df, org_name, domain_name)
+                st.download_button(
+                    label="📊 Roadmap (Excel)",
+                    data=roadmap_excel,
+                    file_name=f"roadmap_{logic_code}_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key=f"dl_road_{logic_code}"
+                )
+            except Exception as e:
+                st.caption(f"Excel export unavailable: {e}")
+        
+        with dl_col3:
+            # Combined strategy as markdown/text
+            full_strategy = f"# Strategic Roadmap: {org_name}\n\n"
+            full_strategy += f"**Domain:** {domain_name}\n"
+            full_strategy += f"**Generated:** {datetime.now().strftime('%Y-%m-%d')}\n\n"
+            for key in ["vision", "gaps", "pillars", "roadmap", "kpis", "confidence"]:
+                full_strategy += f"## {section_titles.get(key, key)}\n\n{out.get(key, 'N/A')}\n\n"
+            
+            st.download_button(
+                label="📝 Strategy (Text)",
+                data=full_strategy,
+                file_name=f"strategy_{logic_code}_{datetime.now().strftime('%Y%m%d')}.md",
+                mime="text/markdown",
+                key=f"dl_md_{logic_code}"
+            )
+        
+        st.markdown("---")
         
         # Use translated section titles
         tab_labels = [
@@ -562,13 +672,20 @@ def render_strategy_tab(username: str, domain_name: str, logic_code: str, txt: d
         tabs = st.tabs(tab_labels)
         section_keys = ["vision", "gaps", "pillars", "roadmap", "kpis"]
         
+        # Apply RTL styling for Arabic
+        rtl_style = "direction: rtl; text-align: right;" if doc_lang == "Arabic" else ""
+        
         for tab, key in zip(tabs, section_keys):
             with tab:
                 content = out.get(key, "N/A")
-                st.markdown(content)
+                if rtl_style:
+                    st.markdown(f"<div style='{rtl_style}'>{content}</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown(content)
         
         if not roadmap_df.empty:
-            st.dataframe(roadmap_df[["Phase", "Initiative", "Duration", "Cost", "Role", "KPI"]])
+            st.markdown("### Implementation Timeline")
+            st.dataframe(roadmap_df[["Phase", "Initiative", "Duration", "Cost", "Role", "KPI"]], use_container_width=True)
         
         if st.button(txt["btn_reset"], key=f"reset_{logic_code}"):
             SessionManager.set(step_key, 1)
@@ -576,7 +693,7 @@ def render_strategy_tab(username: str, domain_name: str, logic_code: str, txt: d
 
 
 def render_policy_tab(username: str, domain_name: str, logic_code: str, txt: dict, lang_opt: str):
-    """Render policy lab with improved Arabic support."""
+    """Render policy lab with improved Arabic support and download option."""
     reg_list = domain_config.get_domain_regulations(domain_name)
     
     col1, col2 = st.columns(2)
@@ -589,21 +706,62 @@ def render_policy_tab(username: str, domain_name: str, logic_code: str, txt: dic
     lang_map = {"الإنجليزية": "English", "العربية": "Arabic", "ثنائي اللغة": "Bilingual"}
     actual_lang = lang_map.get(doc_lang, doc_lang)
     
+    # Show language instruction
+    if actual_lang == "Arabic":
+        st.caption("📝 Policy will be generated entirely in Arabic (السياسة ستكون باللغة العربية بالكامل)")
+    
     if st.button(txt["btn_draft"], key=f"draft_{logic_code}"):
         if policy_name:
             with st.spinner("Drafting policy..."):
                 response = ai_service.generate_policy(policy_name, domain_name, framework, actual_lang)
                 SessionManager.set(f"policy_{logic_code}", response.content)
+                SessionManager.set(f"policy_name_{logic_code}", policy_name)
+                SessionManager.set(f"policy_fw_{logic_code}", framework)
+                SessionManager.set(f"policy_lang_{logic_code}", actual_lang)
     
     policy = SessionManager.get(f"policy_{logic_code}")
     if policy:
+        # Download buttons
+        st.markdown("### 📥 Download Options")
+        dl_col1, dl_col2 = st.columns(2)
+        
+        stored_policy_name = SessionManager.get(f"policy_name_{logic_code}", "Policy")
+        stored_framework = SessionManager.get(f"policy_fw_{logic_code}", "Framework")
+        stored_lang = SessionManager.get(f"policy_lang_{logic_code}", "English")
+        
+        with dl_col1:
+            try:
+                from utils.export_utils import generate_policy_docx
+                policy_docx = generate_policy_docx(stored_policy_name, domain_name, stored_framework, policy, stored_lang)
+                if policy_docx:
+                    st.download_button(
+                        label="📄 Policy (Word)",
+                        data=policy_docx,
+                        file_name=f"policy_{logic_code}_{datetime.now().strftime('%Y%m%d')}.docx",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        key=f"dl_pol_docx_{logic_code}"
+                    )
+            except Exception as e:
+                st.caption(f"Word export unavailable: {e}")
+        
+        with dl_col2:
+            st.download_button(
+                label="📝 Policy (Text)",
+                data=f"# {stored_policy_name}\n\nFramework: {stored_framework}\nDomain: {domain_name}\nGenerated: {datetime.now().strftime('%Y-%m-%d')}\n\n{policy}",
+                file_name=f"policy_{logic_code}_{datetime.now().strftime('%Y%m%d')}.md",
+                mime="text/markdown",
+                key=f"dl_pol_md_{logic_code}"
+            )
+        
+        st.markdown("---")
+        
         # Apply RTL styling for Arabic
-        rtl_style = "direction: rtl; text-align: right;" if actual_lang == "Arabic" else ""
+        rtl_style = "direction: rtl; text-align: right;" if stored_lang == "Arabic" else ""
         st.markdown(f"<div class='policy-paper' style='{rtl_style}'>{policy}</div>", unsafe_allow_html=True)
 
 
 def render_audit_tab(username: str, domain_name: str, logic_code: str, txt: dict):
-    """Render audit tab."""
+    """Render audit tab with download option."""
     reg_list = domain_config.get_domain_regulations(domain_name)
     
     col1, col2 = st.columns(2)
@@ -616,18 +774,68 @@ def render_audit_tab(username: str, domain_name: str, logic_code: str, txt: dict
             if evidence:
                 response = ai_service.generate_audit_report(audit_std, evidence)
                 SessionManager.set(f"audit_{logic_code}", response.content)
+                SessionManager.set(f"audit_std_{logic_code}", audit_std)
             else:
                 st.error("Could not extract text")
     
     audit = SessionManager.get(f"audit_{logic_code}")
     if audit:
+        stored_std = SessionManager.get(f"audit_std_{logic_code}", audit_std)
+        
+        # Download buttons
+        st.markdown("### 📥 Download Options")
+        dl_col1, dl_col2 = st.columns(2)
+        
+        with dl_col1:
+            try:
+                from utils.export_utils import generate_audit_docx
+                audit_docx = generate_audit_docx(stored_std, audit)
+                if audit_docx:
+                    st.download_button(
+                        label="📄 Audit Report (Word)",
+                        data=audit_docx,
+                        file_name=f"audit_report_{logic_code}_{datetime.now().strftime('%Y%m%d')}.docx",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        key=f"dl_aud_docx_{logic_code}"
+                    )
+            except Exception as e:
+                st.caption(f"Word export unavailable: {e}")
+        
+        with dl_col2:
+            st.download_button(
+                label="📝 Audit Report (Text)",
+                data=f"# Audit Report: {stored_std}\n\nGenerated: {datetime.now().strftime('%Y-%m-%d')}\n\n{audit}",
+                file_name=f"audit_report_{logic_code}_{datetime.now().strftime('%Y%m%d')}.md",
+                mime="text/markdown",
+                key=f"dl_aud_md_{logic_code}"
+            )
+        
+        st.markdown("---")
         st.markdown(f"<div class='policy-paper'>{audit}</div>", unsafe_allow_html=True)
 
 
 def render_risk_tab(username: str, domain_name: str, logic_code: str, txt: dict):
-    """Render domain-specific risk radar."""
+    """Render domain-specific risk radar with download option."""
     # Get domain-specific risk data
     risk_data = get_risk_data(logic_code)
+    
+    # Download button for risk register at the top
+    df_risks = risk_repo.get_by_owner(username, domain_name)
+    if not df_risks.empty:
+        st.markdown("### 📥 Download Risk Register")
+        try:
+            from utils.export_utils import generate_risk_register_excel
+            risk_excel = generate_risk_register_excel(df_risks, domain_name)
+            st.download_button(
+                label="📊 Risk Register (Excel)",
+                data=risk_excel,
+                file_name=f"risk_register_{logic_code}_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key=f"dl_risk_{logic_code}"
+            )
+        except Exception as e:
+            st.caption(f"Excel export unavailable: {e}")
+        st.markdown("---")
     
     with st.form(f"risk_{logic_code}"):
         col1, col2 = st.columns(2)
@@ -675,20 +883,47 @@ def render_risk_tab(username: str, domain_name: str, logic_code: str, txt: dict)
     if analysis:
         st.markdown("### Risk Analysis Results")
         st.markdown(analysis)
+    
+    # Show existing risks
+    if not df_risks.empty:
+        st.markdown("### Registered Risks")
+        display_cols = [c for c in ["asset_name", "threat", "risk_level", "created_at"] if c in df_risks.columns]
+        st.dataframe(df_risks[display_cols], use_container_width=True)
 
 
 def render_roadmap_tab(username: str, domain_name: str, logic_code: str, txt: dict):
-    """Render roadmap tab."""
+    """Render roadmap tab with download option."""
     projects = project_repo.get_by_owner(username, domain_name)
     
     if not projects.empty:
+        # Download button
+        st.markdown("### 📥 Download Roadmap")
+        try:
+            from utils.export_utils import generate_roadmap_excel
+            roadmap_excel = generate_roadmap_excel(projects, username, domain_name)
+            st.download_button(
+                label="📊 Roadmap (Excel)",
+                data=roadmap_excel,
+                file_name=f"roadmap_{logic_code}_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key=f"dl_roadmap_{logic_code}"
+            )
+        except Exception as e:
+            st.caption(f"Excel export unavailable: {e}")
+        
+        st.markdown("---")
+        
+        # Gantt chart
         try:
             import plotly.express as px
-            fig = px.timeline(projects, x_start="Start", x_end="Finish", y="Initiative", color="Phase")
+            fig = px.timeline(projects, x_start="Start", x_end="Finish", y="Initiative", color="Phase",
+                             title="Implementation Timeline")
+            fig.update_layout(xaxis_title="Timeline", yaxis_title="Initiative")
             st.plotly_chart(fig, use_container_width=True)
         except Exception as e:
             logger.warning(f"Gantt chart error: {e}")
         
+        # Data table
         cols = [c for c in ["Phase", "Initiative", "Duration", "Cost", "Role", "Kpi"] if c in projects.columns]
         st.dataframe(projects[cols], use_container_width=True)
     else:
