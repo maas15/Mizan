@@ -1,0 +1,33 @@
+# Sentinel GRC - Requirements
+# Core
+streamlit>=1.28.0
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Database
+# sqlite3 is built-in
+
+# AI
+openai>=1.0.0
+
+# Document Generation
+python-docx>=0.8.11
+pdfplumber>=0.9.0
+reportlab>=4.0.0
+fpdf>=1.7.2
+xlsxwriter>=3.1.0
+
+# Visualization
+plotly>=5.15.0
+matplotlib>=3.7.0
+
+# Arabic Text Processing
+arabic-reshaper>=3.0.0
+python-bidi>=0.4.2
+
+# Environment & Utilities
+python-dotenv>=1.0.0
+duckduckgo-search>=3.8.0
+
+# Optional: For bcrypt password hashing (if preferred)
+# bcrypt>=4.0.0
