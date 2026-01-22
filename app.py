@@ -761,35 +761,49 @@ def render_policy_tab(username: str, domain_name: str, logic_code: str, txt: dic
 
 
 def render_audit_tab(username: str, domain_name: str, logic_code: str, txt: dict):
-    """Render audit tab with download option."""
+    """Render audit tab with language selection and download options."""
     reg_list = domain_config.get_domain_regulations(domain_name)
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     audit_std = col1.selectbox(txt.get("audit_target", "Standard"), reg_list, key=f"aud_std_{logic_code}")
-    uploaded = col2.file_uploader(txt.get("upload_ev", "Upload PDF"), type=["pdf"], key=f"aud_file_{logic_code}")
+    
+    # Language selection for audit
+    doc_lang = col2.selectbox(txt["doc_lang"], txt["doc_opts"], key=f"aud_lang_{logic_code}")
+    lang_map = {"الإنجليزية": "English", "العربية": "Arabic", "ثنائي اللغة": "Bilingual"}
+    actual_lang = lang_map.get(doc_lang, doc_lang)
+    
+    uploaded = col3.file_uploader(txt.get("upload_ev", "Upload PDF"), type=["pdf"], key=f"aud_file_{logic_code}")
+    
+    # Language hint
+    if actual_lang == "Arabic":
+        st.caption("📝 Audit report will be generated entirely in Arabic (تقرير التدقيق سيكون باللغة العربية بالكامل)")
+    elif actual_lang == "Bilingual":
+        st.caption("📝 Audit report will be bilingual - English followed by Arabic translation")
     
     if uploaded and st.button(txt["btn_audit"], key=f"audit_{logic_code}"):
-        with st.spinner("Analyzing..."):
+        with st.spinner("Analyzing evidence and generating audit report..."):
             evidence = pdf_extractor.extract_text(uploaded)
             if evidence:
-                response = ai_service.generate_audit_report(audit_std, evidence)
+                response = ai_service.generate_audit_report(audit_std, evidence, actual_lang)
                 SessionManager.set(f"audit_{logic_code}", response.content)
                 SessionManager.set(f"audit_std_{logic_code}", audit_std)
+                SessionManager.set(f"audit_lang_{logic_code}", actual_lang)
             else:
-                st.error("Could not extract text")
+                st.error("Could not extract text from PDF")
     
     audit = SessionManager.get(f"audit_{logic_code}")
     if audit:
         stored_std = SessionManager.get(f"audit_std_{logic_code}", audit_std)
+        stored_lang = SessionManager.get(f"audit_lang_{logic_code}", "English")
         
         # Download buttons
-        st.markdown("### 📥 Download Options")
+        st.markdown("### 📥 Download Audit Report")
         dl_col1, dl_col2 = st.columns(2)
         
         with dl_col1:
             try:
                 from utils.export_utils import generate_audit_docx
-                audit_docx = generate_audit_docx(stored_std, audit)
+                audit_docx = generate_audit_docx(stored_std, audit, stored_lang)
                 if audit_docx:
                     st.download_button(
                         label="📄 Audit Report (Word)",
@@ -802,16 +816,24 @@ def render_audit_tab(username: str, domain_name: str, logic_code: str, txt: dict
                 st.caption(f"Word export unavailable: {e}")
         
         with dl_col2:
+            # Full audit report as markdown
+            report_header = f"# تقرير التدقيق: {stored_std}\n\n" if stored_lang == "Arabic" else f"# Audit Report: {stored_std}\n\n"
+            report_header += f"Generated: {datetime.now().strftime('%Y-%m-%d')}\n"
+            report_header += f"Language: {stored_lang}\n\n---\n\n"
+            
             st.download_button(
                 label="📝 Audit Report (Text)",
-                data=f"# Audit Report: {stored_std}\n\nGenerated: {datetime.now().strftime('%Y-%m-%d')}\n\n{audit}",
+                data=report_header + audit,
                 file_name=f"audit_report_{logic_code}_{datetime.now().strftime('%Y%m%d')}.md",
                 mime="text/markdown",
                 key=f"dl_aud_md_{logic_code}"
             )
         
         st.markdown("---")
-        st.markdown(f"<div class='policy-paper'>{audit}</div>", unsafe_allow_html=True)
+        
+        # Apply RTL styling for Arabic
+        rtl_style = "direction: rtl; text-align: right;" if stored_lang == "Arabic" else ""
+        st.markdown(f"<div class='policy-paper' style='{rtl_style}'>{audit}</div>", unsafe_allow_html=True)
 
 
 def render_risk_tab(username: str, domain_name: str, logic_code: str, txt: dict):
