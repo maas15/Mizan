@@ -1,16 +1,42 @@
 """
-Sentinel GRC - Main Application (Enhanced)
+Mizan GRC - Ultimate Consolidated Version
+ميزان - نظام الحوكمة والمخاطر والامتثال
+
 Enterprise GRC Operating System with Big4-level AI-powered strategy generation.
+Specifically designed for the Saudi Arabian market with bilingual Arabic-English support.
 
 Author: Eng. Mohammad Abbas Alsaadon
-Version: 2.1.0 (Enhanced)
+Version: 3.0.0 Ultimate (Consolidated)
+Last Updated: January 25, 2026
 
-Fixes:
-1. Big4-level strategy output quality
+CONSOLIDATED FEATURES:
+======================
+1. Big4-level strategy output quality (McKinsey/Deloitte/PwC/EY/KPMG standards)
 2. Technology dropdown menus for easier selection
-3. Arabic policy context improved
-4. Domain-specific risk radars for DT and Global Standards
-5. Arabic translation for strategy section titles
+3. Arabic policy context with formal Saudi government terminology (فصحى)
+4. Domain-specific risk radars for all 5 domains
+5. Arabic translation for all section titles
+6. Dynamic benchmarks with documented industry sources
+7. Confidence scoring on all AI outputs
+8. Arabic output validation with English indicator detection
+9. CMMI-based maturity model integration
+10. Sector-specific Saudi Arabia benchmarks
+
+SUPPORTED DOMAINS:
+==================
+- Cyber Security (الأمن السيبراني)
+- AI Governance (حوكمة الذكاء الاصطناعي)
+- Data Management (إدارة البيانات)
+- Digital Transformation (التحول الرقمي)
+- Global Standards (المعايير العالمية)
+
+BENCHMARK SOURCES:
+==================
+- NCA (Saudi National Cybersecurity Authority)
+- SDAIA (Saudi Data and AI Authority)
+- SAMA (Saudi Central Bank)
+- Gartner, McKinsey, Deloitte Reports
+- ISO Survey of Certifications
 """
 
 import streamlit as st
@@ -97,6 +123,21 @@ try:
 except ImportError as e:
     print(f"❌ Frameworks import error: {e}")
     raise
+
+# Benchmarks
+try:
+    from data.benchmarks import get_sector_benchmark, get_benchmark_comparison, calculate_maturity_level, get_all_sources
+    HAS_BENCHMARKS = True
+    print("✅ Using dynamic benchmarks module")
+except ImportError as e:
+    print(f"⚠️ Benchmarks module not available: {e}")
+    HAS_BENCHMARKS = False
+    def get_sector_benchmark(domain, sector):
+        return {"average": 55, "top_quartile": 75, "source": "Industry estimates"}
+    def get_benchmark_comparison(domain, sector, score):
+        return {"industry_average": 55, "gap_to_average": 10}
+    def calculate_maturity_level(score):
+        return (2, "Developing", "تطوير")
 
 # UI Components
 try:
@@ -476,21 +517,25 @@ def render_strategy_tab(username: str, domain_name: str, logic_code: str, txt: d
         st.info(f"{txt['step1']} - {domain_name}")
         
         with st.form(f"scope_{logic_code}"):
+            # Swap columns for RTL languages (Arabic)
+            is_rtl = lang_opt in ["العربية", "Arabic"]
             col1, col2 = st.columns(2)
+            # For RTL, swap the column assignments
+            left_col, right_col = (col2, col1) if is_rtl else (col1, col2)
             
-            org_name = col1.text_input(txt["ui_form"]["org_name"], value="My Organization")
-            sector = col2.selectbox(txt["ui_form"]["sector"], 
+            org_name = left_col.text_input(txt["ui_form"]["org_name"], value="My Organization")
+            sector = right_col.selectbox(txt["ui_form"]["sector"], 
                 ["Government", "Banking/Finance", "Healthcare", "Energy", "Telecom", "Retail", "Manufacturing"])
             
-            sel_reg = col1.multiselect(txt["ui_form"]["reg"], reg_list, 
+            sel_reg = left_col.multiselect(txt["ui_form"]["reg"], reg_list, 
                 default=reg_list[:2] if len(reg_list) >= 2 else reg_list)
             
             # Use translated org sizes if available
             org_sizes = txt.get("org_sizes", ["Small (<100)", "Medium (100-1000)", "Large (1000+)"])
-            size = col2.selectbox(txt["ui_form"]["size"], org_sizes)
+            size = right_col.selectbox(txt["ui_form"]["size"], org_sizes)
             
-            budget = col1.selectbox(txt["ui_form"]["budget"], ["< 1M", "1M-5M", "5M-20M", "20M+"])
-            horizon = col2.slider(txt["ui_form"]["horizon"], 12, 60, 36)
+            budget = left_col.selectbox(txt["ui_form"]["budget"], ["< 1M", "1M-5M", "5M-20M", "20M+"])
+            horizon = right_col.slider(txt["ui_form"]["horizon"], 12, 60, 36)
             
             st.markdown(f"### {txt['ui_form']['current_state']}")
             
@@ -559,9 +604,13 @@ def render_strategy_tab(username: str, domain_name: str, logic_code: str, txt: d
                 lang_map = {"الإنجليزية": "English", "العربية": "Arabic", "ثنائي اللغة": "Bilingual"}
                 actual_lang = lang_map.get(doc_lang, doc_lang)
                 
+                # Get sector-specific benchmarks
+                sector = inputs.get("sec", "General")
+                benchmark_data = get_sector_benchmark(domain_name, sector)
+                
                 ai_context = {
                     "org_name": inputs.get("org"), 
-                    "sector": inputs.get("sec"),
+                    "sector": sector,
                     "size": inputs.get("size"), 
                     "domain": domain_name,
                     "frameworks": inputs.get("reg", []), 
@@ -571,7 +620,8 @@ def render_strategy_tab(username: str, domain_name: str, logic_code: str, txt: d
                     "budget": inputs.get("bud"),
                     "horizon": inputs.get("time"), 
                     "language": actual_lang,
-                    "gap_data": gap_summary
+                    "gap_data": gap_summary,
+                    "benchmark": benchmark_data  # Add benchmark data to context
                 }
                 
                 ai_response = ai_service.generate_strategy(ai_context)

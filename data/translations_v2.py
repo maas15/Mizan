@@ -308,7 +308,7 @@ TRANSLATIONS: Dict[str, Dict[str, Any]] = {
         "audit_target": "Audit Standard",
         "upload_ev": "Upload Evidence (PDF)",
         "doc_lang": "Document Language",
-        "doc_opts": ["English", "Arabic", "Bilingual"],
+        "doc_opts": ["English", "Arabic"],
         "doc_fmt": "Format",
         "lbl_reg": "Regulation / Standard",
         "login_title": "Sign In",
@@ -397,7 +397,7 @@ TRANSLATIONS: Dict[str, Dict[str, Any]] = {
         "audit_target": "معيار التدقيق",
         "upload_ev": "رفع الإثبات (PDF)",
         "doc_lang": "لغة الوثيقة",
-        "doc_opts": ["الإنجليزية", "العربية", "ثنائي اللغة"],
+        "doc_opts": ["الإنجليزية", "العربية"],
         "doc_fmt": "الصيغة",
         "lbl_reg": "المرجع التنظيمي / المعيار",
         "login_title": "تسجيل الدخول",
@@ -485,3 +485,54 @@ def get_section_title(section_key: str, language: str) -> str:
         sections = TRANSLATIONS["English"].get("strategy_sections", {})
     
     return sections.get(section_key, section_key)
+
+# Additional UI translations for pipeline status messages
+PIPELINE_MESSAGES = {
+    "English": {
+        "generating_strategy": "Generating strategy...",
+        "generating_policy": "Generating policy document...",
+        "analyzing_audit": "Analyzing audit evidence...",
+        "analyzing_risk": "Analyzing risk scenario...",
+        "download_options": "Download Options",
+        "export_pdf": "Export as PDF",
+        "export_docx": "Export as Word",
+        "export_pptx": "Export as PowerPoint",
+        "processing": "Processing...",
+        "complete": "Complete!",
+        "error_occurred": "An error occurred",
+        "invalid_document": "Invalid document for this domain",
+        "document_mismatch": "The uploaded document does not appear to be related to {domain}. Please upload a relevant document.",
+        "validating_document": "Validating document relevance..."
+    },
+    "العربية": {
+        "generating_strategy": "جاري إنشاء الاستراتيجية...",
+        "generating_policy": "جاري إنشاء وثيقة السياسة...",
+        "analyzing_audit": "جاري تحليل أدلة التدقيق...",
+        "analyzing_risk": "جاري تحليل سيناريو المخاطر...",
+        "download_options": "خيارات التنزيل",
+        "export_pdf": "تصدير كـ PDF",
+        "export_docx": "تصدير كـ Word",
+        "export_pptx": "تصدير كـ PowerPoint",
+        "processing": "جاري المعالجة...",
+        "complete": "اكتمل!",
+        "error_occurred": "حدث خطأ",
+        "invalid_document": "وثيقة غير صالحة لهذا المجال",
+        "document_mismatch": "الوثيقة المرفوعة لا تبدو متعلقة بمجال {domain}. يرجى رفع وثيقة ذات صلة.",
+        "validating_document": "جاري التحقق من صلة الوثيقة..."
+    }
+}
+
+def get_pipeline_message(key: str, language: str = "English", **kwargs) -> str:
+    """Get a pipeline status message in the specified language."""
+    lang_key = "العربية" if language in ["Arabic", "العربية"] else "English"
+    messages = PIPELINE_MESSAGES.get(lang_key, PIPELINE_MESSAGES["English"])
+    message = messages.get(key, key)
+    
+    # Format with any provided kwargs
+    if kwargs:
+        try:
+            message = message.format(**kwargs)
+        except KeyError:
+            pass
+    
+    return message
