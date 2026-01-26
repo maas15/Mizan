@@ -38,13 +38,16 @@ class AppConfig:
     
     # Application Info
     APP_NAME: str = "Mizan"
-    APP_TITLE: str = "Mizan | GRC OS"
+    APP_TITLE: str = "Mizan | Enterprise GRC Platform"
     APP_ICON: str = "⚖️"
-    APP_VERSION: str = "2.1.0"
+    APP_VERSION: str = "3.0.0"
+    APP_TAGLINE: str = "Governance • Risk • Compliance"
     LOGO_FILE: str = "logo.png"
     
     # Creator Info
     CREATOR_NAME: str = "Eng. Mohammad Abbas Alsaadon"
+    CREATOR_TITLE: str = "GRC Solutions Architect"
+    COPYRIGHT_YEAR: str = "2025"
     
     # Database
     DB_FILE: str = "sentinel.db"

@@ -27,7 +27,7 @@ DOMAIN_KEYWORDS = {
             "food safety", "physical security only", "building security"
         ]
     },
-    "AI Governance": {
+    "Artificial Intelligence": {
         "strong": [
             "artificial intelligence", "ai governance", "machine learning", "ml model",
             "deep learning", "neural network", "algorithm", "sdaia", "ai ethics",

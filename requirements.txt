@@ -1,33 +1,43 @@
-# Sentinel GRC - Requirements
-# Core
+# Mizan GRC - Requirements
+# AI-Driven Enterprise GRC Solution
+
+# Web Framework
 streamlit>=1.28.0
+
+# AI Integration (Primary)
+openai>=1.0.0
+
+# HTTP Client (Fallback for AI calls)
+requests>=2.31.0
+
+# Data Processing
 pandas>=2.0.0
 numpy>=1.24.0
 
-# Database
-# sqlite3 is built-in
-
-# AI
-openai>=1.0.0
-
 # Document Generation
 python-docx>=0.8.11
-pdfplumber>=0.9.0
+openpyxl>=3.1.0
 reportlab>=4.0.0
-fpdf>=1.7.2
-xlsxwriter>=3.1.0
 
-# Visualization
+# PDF Processing
+PyPDF2>=3.0.0
+pdfplumber>=0.9.0
+
+# Image Processing
+Pillow>=10.0.0
+
+# Utilities
+python-dotenv>=1.0.0
+
+# Database
+# SQLite is built-in, no additional package needed
+
+# Security
+bcrypt>=4.0.0
+
+# Date/Time
+python-dateutil>=2.8.0
+
+# Optional: For advanced charts
 plotly>=5.15.0
 matplotlib>=3.7.0
-
-# Arabic Text Processing
-arabic-reshaper>=3.0.0
-python-bidi>=0.4.2
-
-# Environment & Utilities
-python-dotenv>=1.0.0
-duckduckgo-search>=3.8.0
-
-# Optional: For bcrypt password hashing (if preferred)
-# bcrypt>=4.0.0

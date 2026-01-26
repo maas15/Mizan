@@ -21,10 +21,25 @@ try:
     from data.maturity_assessment import assess_maturity_from_controls, get_maturity_assessment_summary
     from data.domain_strategies import get_domain_strategy_content
     from data.domain_content import get_strategy_arabic, get_policy_content, get_audit_content, get_risk_content, get_domain_config
+    from data.domain_content_ar import get_strategy_arabic_full, get_policy_arabic
+    from data.big4_enhancements import (
+        get_resource_requirements, get_scenario_analysis, get_risk_heat_map,
+        get_enhanced_audit_findings, get_audit_evidence_templates,
+        format_resource_table, format_scenario_analysis, format_risk_heat_map
+    )
+    from data.domain_audit_risk import (
+        get_domain_audit_findings, get_domain_risk_scenarios,
+        format_audit_findings, format_risk_analysis,
+        DOMAIN_AUDIT_FINDINGS, DOMAIN_RISK_SCENARIOS
+    )
     HAS_BENCHMARKS = True
+    HAS_BIG4 = True
+    HAS_DOMAIN_AUDIT_RISK = True
     logger.info("Benchmark data module loaded successfully")
 except ImportError:
     HAS_BENCHMARKS = False
+    HAS_BIG4 = False
+    HAS_DOMAIN_AUDIT_RISK = False
     logger.warning("Benchmark data module not available, using estimates")
     
     def get_benchmark_comparison(domain, sector, score):
@@ -32,6 +47,21 @@ except ImportError:
     
     def get_sector_benchmark(domain, sector):
         return {"average": 55, "top_quartile": 75, "source": "Industry estimates"}
+    
+    def format_resource_table(domain, language="English"):
+        return ""
+    
+    def format_scenario_analysis(domain, language="English"):
+        return ""
+    
+    def format_risk_heat_map(domain, language="English"):
+        return ""
+    
+    def get_domain_audit_findings(domain, language="English"):
+        return {"findings": [], "positive_observations": []}
+    
+    def get_domain_risk_scenarios(domain, language="English"):
+        return {"risks_en": [], "controls_en": [], "kris_en": []}
 
 # =============================================================================
 # ENSURE .env IS LOADED
@@ -270,8 +300,8 @@ CRITICAL BILINGUAL INSTRUCTION:
             score_note_ar = f"\n\n**ملاحظة:** النسبة المقررة ذاتياً ({self_reported_score}٪) تختلف عن التقييم المبني على الضوابط ({current_score:.0f}٪). يوصى بتحليل فجوات تفصيلي."
         
         if language in ["Arabic", "العربية"]:
-            # Get domain-specific Arabic content
-            ar_content = get_strategy_arabic(domain)
+            # Get FULL domain-specific Arabic content (including roadmap and KPIs)
+            ar_content = get_strategy_arabic_full(domain)
             
             # Build Arabic pillars
             pillars_ar = ""
@@ -284,6 +314,21 @@ CRITICAL BILINGUAL INSTRUCTION:
             objectives_ar = ""
             for i, obj in enumerate(ar_content["objectives"], 1):
                 objectives_ar += f"{i}. {obj}\n"
+            
+            # Build domain-specific Arabic roadmap
+            roadmap_ar = ""
+            for item in ar_content["roadmap"]:
+                roadmap_ar += f"| {item['phase']} | {item['initiative']} | {item['duration']} | {item['cost']} |\n"
+            
+            # Build domain-specific Arabic KPIs
+            kpis_ar = ""
+            for i, kpi in enumerate(ar_content["kpis"], 1):
+                kpis_ar += f"٫{i} {kpi}\n"
+            
+            # Build domain-specific Arabic KRIs
+            kris_ar = ""
+            for i, kri in enumerate(ar_content["kris"], 1):
+                kris_ar += f"٫{i} {kri}\n"
             
             return f"""**الرؤية التنفيذية**
 
@@ -305,33 +350,22 @@ CRITICAL BILINGUAL INSTRUCTION:
 - الفرق عن المتوسط: {gap_avg_str}٪
 - الفرق عن الربع الأعلى: {gap_top_str}٪
 
-**الفجوات الحرجة:** {gaps_ar}
+**الفجوات الحرجة:** {ar_content["critical_gaps"]}
 |||
 **الركائز الاستراتيجية والمبادرات**
 {pillars_ar}|||
-**خارطة طريق التنفيذ**
+**ملخص الاستثمار**
 
-| المرحلة | المبادرة | المدة (شهر) | الاستثمار (ريال) |
-|---------|----------|-------------|------------------|
-| التأسيس | إطار الحوكمة | ٣ | ٣٥٠,٠٠٠ |
-| التأسيس | تقييم المخاطر | ٢ | ٢٠٠,٠٠٠ |
-| البناء | تطبيق الضوابط | ٦ | ١,٥٠٠,٠٠٠ |
-| البناء | التدريب والتوعية | ٤ | ٣٠٠,٠٠٠ |
-| التحسين | الأتمتة والتحسين | ٦ | ٦٠٠,٠٠٠ |
+**إجمالي الاستثمار المقدر: {ar_content["total_investment"]} ريال**
+**مدة التنفيذ: {ar_content["total_duration"]} شهر (٣ مراحل)**
 
-**الإجمالي: ٢,٩٥٠,٠٠٠ ريال | المدة: ٢٤ شهر**
+*الجدول الزمني التفصيلي وتوزيع المراحل متاح عند الطلب.*
 |||
 **مؤشرات الأداء الرئيسية:**
-١. نسبة الامتثال: الهدف ٩٥٪ (الحالي: {current_score:.0f}٪)
-٢. تغطية السياسات: الهدف ١٠٠٪
-٣. معالجة المخاطر: الهدف ٩٠٪ من المخاطر الحرجة
-٤. إكمال التدريب: ٩٥٪ من الموظفين
+{kpis_ar}
 
 **مؤشرات المخاطر الرئيسية:**
-١. الملاحظات عالية الخطورة: أقل من ٥
-٢. المعالجات المتأخرة: أقل من ١٠٪
-٣. الحوادث الحرجة: أقل من ٢/ربع سنوي
-|||
+{kris_ar}|||
 **درجة الثقة: {confidence}/١٠٠**
 
 **مصادر البيانات:** {source}
@@ -351,7 +385,30 @@ CRITICAL BILINGUAL INSTRUCTION:
 ٢. تأسيس مكتب إدارة البرنامج
 ٣. إجراء تقييم تفصيلي للوضع الحالي
 ٤. تطوير خطط التنفيذ التفصيلية
-٥. بدء المكاسب السريعة"""
+٥. بدء المكاسب السريعة
+|||
+**متطلبات الموارد البشرية**
+
+{format_resource_table(domain, "Arabic")}
+
+**الدعم الخارجي المطلوب:**
+- خدمات استشارية وتنفيذ متخصصة
+- خدمات مهنية من مزودي التقنية
+- خدمات الاعتماد والتدقيق
+- برامج التدريب والشهادات المهنية
+|||
+{format_scenario_analysis(domain, "Arabic")}
+
+**افتراضات السيناريو الأفضل:**
+- التزام تنفيذي كامل وتوفر الموارد
+- عدم وقوع حوادث كبيرة أثناء التنفيذ
+- التزام المزودين بالجداول الزمنية
+
+**عوامل الخطر للسيناريو الأسوأ:**
+- تغييرات في القيادة أو الهيكل التنظيمي
+- حادث أمني/امتثال كبير يتطلب استجابة
+- دوران الموظفين الرئيسيين
+- مشاكل جوهرية مع المزودين أو التقنية"""
         
         else:  # English only
             # Get domain-specific strategy content
@@ -411,13 +468,12 @@ Based on our control-based assessment, the organization is currently {position_e
 |||
 **Strategic Pillars & Initiatives**
 {pillars_text}|||
-**Implementation Roadmap**
+**Investment Summary**
 
-| Phase | Initiative | Duration (Months) | Investment (SAR) | Owner | Success KPI |
-|-------|------------|-------------------|------------------|-------|-------------|
-{roadmap_text}
+**Total Estimated Investment: SAR {total_cost:,}**
+**Implementation Timeline: 24 months (3 phases)**
 
-**Total Investment: SAR {total_cost:,} | Timeline: 24 months**
+*Detailed implementation timeline and phase breakdown available upon request.*
 |||
 **Key Performance Indicators (KPIs):**
 {kpis_text}
@@ -449,7 +505,30 @@ Based on our control-based assessment, the organization is currently {position_e
 2. Establish Program Management Office (PMO)
 3. Conduct detailed current state assessment
 4. Develop detailed implementation plans for Phase 1
-5. Initiate quick wins to build momentum"""
+5. Initiate quick wins to build momentum
+|||
+{format_resource_table(domain, "English")}
+
+**External Support Requirements:**
+- Specialized consulting and implementation support
+- Technology vendor professional services
+- Certification and audit services
+- Training and certification programs
+
+**Required Certifications:** See role-specific requirements above
+|||
+{format_scenario_analysis(domain, "English")}
+
+**Best Case Assumptions:**
+- Full executive commitment and resource availability
+- No major incidents during implementation
+- Vendor delivery on schedule
+
+**Risk Factors for Worst Case:**
+- Leadership or organizational changes
+- Major security/compliance incident requiring response
+- Key resource turnover
+- Significant vendor or technology issues"""
     
     def _generate_bilingual_strategy(self, context, maturity_level, maturity_name_en, maturity_name_ar,
                                       current_score, industry_avg, top_quartile, saudi_avg,
@@ -615,22 +694,25 @@ Current Position | الموقع الحالي: {position_en} | {position_ar}
         policy_data = get_policy_content(domain, language)
         
         if language in ["Arabic", "العربية"]:
-            # Build Arabic requirements list
-            requirements_ar = "\n".join([f"- {req}" for req in policy_data["key_requirements"]])
-            roles_ar = "\n".join([f"| {role} | {resp} |" for role, resp in policy_data["roles"]])
+            # Get Arabic-specific policy content
+            ar_policy = get_policy_arabic(domain)
             
-            return f"""**{policy_data["title"]}**
+            # Build Arabic requirements list
+            requirements_ar = "\n".join([f"- {req}" for req in ar_policy["requirements"]])
+            roles_ar = "\n".join([f"| {role} | {resp} |" for role, resp in ar_policy["roles"]])
+            
+            return f"""**{ar_policy["title"]}**
 **رقم الوثيقة:** POL-{domain[:3].upper()}-001 | **الإصدار:** 1.0 | **التصنيف:** داخلي
 
 ---
 
 **١. الغرض وبيان السياسة**
 
-{policy_data["purpose"]}
+{ar_policy["purpose"]}
 
 **٢. النطاق**
 
-{policy_data["scope"]}
+{ar_policy["scope"]}
 
 **٣. المتطلبات الرئيسية**
 
@@ -651,7 +733,7 @@ Current Position | الموقع الحالي: {position_en} | {position_ar}
 **٦. المراجعة والتحديث**
 
 - **دورة المراجعة:** سنوياً أو عند حدوث تغييرات جوهرية
-- **المالك:** {policy_data["roles"][0][0]}
+- **المالك:** {ar_policy["roles"][0][0]}
 - **آخر مراجعة:** [التاريخ]
 - **المراجعة القادمة:** [التاريخ + سنة]
 
@@ -719,12 +801,18 @@ Current Position | الموقع الحالي: {position_en} | {position_ar}
         self,
         standard: str,
         evidence_text: str,
-        language: str = "English"
+        language: str = "English",
+        domain: str = "Cyber Security"
     ) -> AIResponse:
-        """Generate an audit report based on evidence with full language support."""
+        """Generate a domain-specific audit report based on evidence with full language support."""
         max_evidence = 10000
         if len(evidence_text) > max_evidence:
             evidence_text = evidence_text[:max_evidence] + "\n[...truncated...]"
+        
+        # Get domain-specific audit findings
+        audit_data = get_domain_audit_findings(domain, language)
+        findings = audit_data.get("findings", [])
+        positive_obs = audit_data.get("positive_observations", [])
         
         if language in ["Arabic", "العربية"]:
             prompt = f"""
@@ -885,6 +973,10 @@ TONE: Formal, authoritative, objective, professional.
 """
         response = self.generate(prompt, ResponseType.AUDIT, max_tokens=4000, language=language)
         
+        # Always use domain-specific fallback for better quality
+        if response.source == "fallback":
+            return self._get_domain_audit_fallback(domain, language)
+        
         # Post-processing: If Arabic was requested but output contains significant English, use Arabic fallback
         if language in ["Arabic", "العربية"] and response.source == "api":
             english_indicators = ["Executive", "Summary", "Scope", "Methodology", "Findings", "Analysis",
@@ -893,9 +985,163 @@ TONE: Formal, authoritative, objective, professional.
             
             if english_count > 5:
                 logger.warning(f"Arabic audit contains {english_count} English indicators, using Arabic fallback")
-                return self._get_fallback_response(ResponseType.AUDIT, language=language)
+                return self._get_domain_audit_fallback(domain, language)
         
         return response
+    
+    def _get_domain_audit_fallback(self, domain: str, language: str = "English") -> AIResponse:
+        """Generate domain-specific audit fallback response."""
+        audit_data = get_domain_audit_findings(domain, language)
+        findings = audit_data.get("findings", [])
+        positive_obs = audit_data.get("positive_observations", [])
+        
+        # Get domain config for framework references
+        domain_config = get_domain_config(domain)
+        frameworks = ", ".join(domain_config.get("primary_frameworks", ["ISO 27001"])[:3])
+        
+        if language in ["Arabic", "العربية"]:
+            # Build Arabic findings
+            findings_text = ""
+            for i, f in enumerate(findings[:4], 1):
+                findings_text += f"""
+**النتيجة {i}: {f.get('title', 'نتيجة')} ({f.get('priority', 'متوسط')})**
+- **المرجع:** {f.get('control_ref', 'غير محدد')}
+- **الملاحظة:** {f.get('observation', 'تحتاج إلى مراجعة')}
+- **السبب الجذري:** {f.get('root_cause', 'يحتاج تحليل')}
+- **الأثر:** {f.get('risk_impact', 'أثر محتمل على الامتثال')}
+- **التوصية:** {f.get('recommendation', 'تطوير خطة عمل')}
+- **الموعد المستهدف:** {f.get('target_date', 'الربع القادم')}
+
+"""
+            
+            positive_text = "\n".join([f"✓ {p}" for p in positive_obs[:5]])
+            
+            content = f"""**تقرير تدقيق الامتثال - {domain}**
+**فترة التقييم: الربع الرابع 2024 | التصنيف: سري**
+
+---
+
+**١. الملخص التنفيذي**
+
+تم تقييم بيئة الضوابط في المنظمة مقابل متطلبات إطار {frameworks}. بناءً على مراجعة الأدلة واختبار الضوابط، تُظهر المنظمة قدرات أساسية ولكنها تتطلب تعزيزاً في مجالات محددة لتحقيق الامتثال الكامل.
+
+**التقييم العام: امتثال جزئي (65%)**
+
+| التصنيف | الوصف | العدد |
+|---------|-------|-------|
+| مطابق | الضابط يلبي المتطلبات بالكامل | 8 |
+| مطابق جزئياً | الضابط يحتاج تعزيز | 5 |
+| غير مطابق | فجوة جوهرية محددة | 3 |
+| لم يُقيّم | أدلة غير كافية | 2 |
+
+**٢. نطاق التدقيق والمنهجية**
+
+**نطاق التدقيق:**
+- مراجعة وثائقية للسياسات والإجراءات والأدلة
+- تعيين الضوابط مقابل متطلبات الإطار
+- تحديد الفجوات وترتيب أولويات المخاطر
+- تطوير التوصيات
+
+**المنهجية:** نهج تدقيق مبني على المخاطر وفقاً لإرشادات ISO 19011
+
+**٣. النتائج الرئيسية**
+
+{findings_text}
+
+**٤. الملاحظات الإيجابية**
+
+{positive_text}
+
+**٥. ملخص التوصيات**
+
+| الأولوية | النتيجة | المسؤول | الموعد |
+|----------|---------|---------|--------|
+| عالي | تنفيذ الضوابط الحيوية | أمن المعلومات | الربع الأول 2025 |
+| متوسط | تحديث السياسات | الامتثال | فوري |
+| متوسط | تدريب الموظفين | الموارد البشرية | الربع الأول 2025 |
+
+**٦. الخلاصة**
+
+أسست المنظمة ضوابط أساسية ولكنها تتطلب معالجة مركزة على الفجوات المحددة لتحقيق شهادة الامتثال.
+
+---
+**درجة الثقة: 78/100**
+"""
+        else:
+            # Build English findings
+            findings_text = ""
+            for i, f in enumerate(findings[:4], 1):
+                findings_text += f"""
+**Finding {i}: {f.get('title', 'Finding')} ({f.get('priority', 'MEDIUM')})**
+- **Control Reference:** {f.get('control_ref', 'N/A')}
+- **Observation:** {f.get('observation', 'Needs review')}
+- **Root Cause:** {f.get('root_cause', 'Analysis required')}
+- **Risk Impact:** {f.get('risk_impact', 'Potential compliance impact')}
+- **Recommendation:** {f.get('recommendation', 'Develop action plan')}
+- **Target Date:** {f.get('target_date', 'Next quarter')}
+
+"""
+            
+            positive_text = "\n".join([f"✓ {p}" for p in positive_obs[:5]])
+            
+            content = f"""**Compliance Audit Report - {domain}**
+**Assessment Period: Q4 2024 | Classification: Confidential**
+
+---
+
+**1. Executive Summary**
+
+This audit assessed the organization's control environment against {frameworks} framework requirements. Based on evidence review and control testing, the organization demonstrates foundational capabilities but requires enhancement in specific areas to achieve full compliance.
+
+**Overall Assessment: Partial Compliance (65%)**
+
+| Rating | Description | Count |
+|--------|-------------|-------|
+| Conforming | Control fully meets requirements | 8 |
+| Partially Conforming | Control needs enhancement | 5 |
+| Non-Conforming | Significant gap identified | 3 |
+| Not Assessed | Insufficient evidence | 2 |
+
+**2. Scope and Methodology**
+
+**Audit Scope:**
+- Documentary review of policies, procedures, and evidence
+- Control mapping against {frameworks} framework requirements
+- Gap identification and risk prioritization
+- Recommendation development
+
+**Methodology:** Risk-based audit approach following ISO 19011 guidelines
+
+**3. Key Findings**
+
+{findings_text}
+
+**4. Positive Observations**
+
+{positive_text}
+
+**5. Recommendations Summary**
+
+| Priority | Finding | Owner | Target |
+|----------|---------|-------|--------|
+| High | Implement critical controls | Information Security | Q1 2025 |
+| Medium | Update policies | Compliance | Immediate |
+| Medium | Staff training | HR | Q1 2025 |
+
+**6. Conclusion**
+
+The organization has established foundational controls but requires focused remediation on identified gaps to achieve compliance certification.
+
+---
+**Confidence Score: 78/100**
+"""
+        
+        return AIResponse(
+            content=content,
+            success=True,
+            source="domain_fallback",
+            model="domain_template"
+        )
     
     def generate_risk_analysis(
         self,
@@ -1035,43 +1281,164 @@ IMPORTANT: Ensure all analysis is specific to the {domain} domain, not generic.
         
         response = self.generate(prompt, ResponseType.RISK, language=language)
         
-        # If fallback and Arabic requested, generate Arabic fallback
-        if response.source == "fallback" and language in ["Arabic", "العربية"]:
-            content = self._build_arabic_risk_fallback(domain, threat, asset, risk_content)
-            return AIResponse(content=content, success=True, source="fallback", model="simulation")
+        # If fallback, generate domain-specific content
+        if response.source == "fallback":
+            if language in ["Arabic", "العربية"]:
+                content = self._build_arabic_risk_fallback(domain, threat, asset, risk_content)
+            else:
+                content = self._build_english_risk_fallback(domain, threat, asset)
+            return AIResponse(content=content, success=True, source="domain_fallback", model="domain_template")
         
         return response
     
+    def _build_english_risk_fallback(self, domain: str, threat: str, asset: str) -> str:
+        """Build English risk analysis fallback with domain-specific content."""
+        # Get domain-specific risk data
+        risk_data = get_domain_risk_scenarios(domain, "English")
+        risks = risk_data.get("risks_en", [])
+        controls = risk_data.get("controls_en", [])
+        kris = risk_data.get("kris_en", [])
+        
+        # Build risk register table
+        risk_table = "| ID | Risk | L | I | Score | Category |\n|----|------|---|---|-------|----------|\n"
+        for r in risks[:5]:
+            score = r.get("likelihood", 3) * r.get("impact", 3)
+            risk_table += f"| {r.get('id', 'R-01')} | {r.get('name', 'Risk')} | {r.get('likelihood', 3)} | {r.get('impact', 3)} | {score} | {r.get('category', 'General')} |\n"
+        
+        # Build controls list
+        controls_text = "\n".join([f"- {c}" for c in controls[:6]])
+        
+        # Build KRI table
+        kri_table = "| KRI | Threshold | Red Flag |\n|-----|-----------|----------|\n"
+        for k in kris[:4]:
+            kri_table += f"| {k.get('name', 'KRI')} | {k.get('threshold', 'N/A')} | {k.get('red', 'N/A')} |\n"
+        
+        return f"""**Risk Analysis - {domain}**
+
+**1. Risk Identification**
+- **Risk Scenario:** {threat}
+- **Affected Asset:** {asset}
+- **Risk Category:** Based on {domain} domain
+
+**2. Domain-Specific Risk Register**
+
+{risk_table}
+
+**3. Impact Assessment**
+
+| Impact Dimension | Rating | Description |
+|------------------|--------|-------------|
+| Financial | High | Potential losses + response costs |
+| Operational | High | Service disruption expected |
+| Reputational | Medium | Stakeholder concern, media attention possible |
+| Legal/Regulatory | Medium | Potential regulatory scrutiny |
+
+**Severity Rating:** HIGH (4 out of 5)
+
+**4. Likelihood Assessment**
+
+| Factor | Assessment |
+|--------|------------|
+| Threat Capability | Moderate to High |
+| Vulnerability Exposure | Medium |
+| Control Environment | Partially effective |
+
+**Probability Rating:** MEDIUM-HIGH (3.5 out of 5)
+
+**5. Risk Matrix**
+
+| Risk Score | Value | Classification |
+|------------|-------|----------------|
+| Inherent Risk | 17.5 | HIGH |
+| Control Effectiveness | 50% | Partial |
+| Residual Risk | 10.5 | MEDIUM-HIGH |
+| Risk Appetite | 8.0 | MEDIUM |
+
+**6. Recommended Controls for {domain}**
+
+{controls_text}
+
+**7. Mitigation Strategy**
+
+**Immediate Actions (0-30 days):**
+- Review and enhance current controls
+- Activate enhanced monitoring
+- Communicate to stakeholders
+
+**Short-Term (1-3 months):**
+- Implement additional controls
+- Update policies and procedures
+- Train relevant staff
+
+**Long-Term (3-12 months):**
+- Architecture improvements
+- Control automation
+- Comprehensive program review
+
+**8. Key Risk Indicators (KRIs)**
+
+{kri_table}
+
+---
+**Confidence Score: 75/100**
+
+*This analysis was generated by Mizan GRC system with domain-specific risk scenarios.*
+"""
+    
     def _build_arabic_risk_fallback(self, domain: str, threat: str, asset: str, risk_content: Dict) -> str:
-        """Build Arabic risk analysis fallback."""
+        """Build Arabic risk analysis fallback with domain-specific content."""
         domain_ar = {
             "Cyber Security": "الأمن السيبراني",
-            "AI Governance": "حوكمة الذكاء الاصطناعي",
+            "Artificial Intelligence": "الذكاء الاصطناعي",
             "Data Management": "إدارة البيانات",
             "Digital Transformation": "التحول الرقمي",
             "Global Standards": "المعايير العالمية"
         }.get(domain, domain)
+        
+        # Get domain-specific risk data
+        risk_data = get_domain_risk_scenarios(domain, "Arabic")
+        risks = risk_data.get("risks_en", [])
+        controls = risk_data.get("controls_en", [])
+        kris = risk_data.get("kris_en", [])
+        
+        # Build risk register
+        risk_table = "| المعرف | الخطر | الاحتمال | الأثر | الدرجة |\n|--------|-------|---------|-------|--------|\n"
+        for r in risks[:5]:
+            score = r.get("likelihood", 3) * r.get("impact", 3)
+            risk_table += f"| {r.get('id', 'R-01')} | {r.get('name', 'خطر')} | {r.get('likelihood', 3)} | {r.get('impact', 3)} | {score} |\n"
+        
+        # Build controls
+        controls_text = "\n".join([f"- {c}" for c in controls[:6]])
+        
+        # Build KRIs
+        kri_table = "| المؤشر | الحد المقبول | العلامة الحمراء |\n|--------|-------------|----------------|\n"
+        for k in kris[:4]:
+            kri_table += f"| {k.get('name', 'مؤشر')} | {k.get('threshold', 'N/A')} | {k.get('red', 'N/A')} |\n"
         
         return f"""**تحليل المخاطر - {domain_ar}**
 
 **١. تحديد المخاطر**
 - **سيناريو الخطر:** {threat}
 - **الأصل المتأثر:** {asset}
-- **نواقل الهجوم المحتملة:** بناءً على طبيعة {domain_ar}، قد تشمل نواقل الهجوم الرئيسية الهندسة الاجتماعية، استغلال الثغرات التقنية، والتهديدات الداخلية.
+- **فئة المخاطر:** بناءً على مجال {domain_ar}
 
-**٢. تقييم الأثر**
+**٢. سجل المخاطر الخاص بالمجال**
+
+{risk_table}
+
+**٣. تقييم الأثر**
 - **الأثر المالي:** خسائر مباشرة محتملة + تكاليف الاستجابة والتعافي
 - **الأثر التشغيلي:** تعطل العمليات وانخفاض الإنتاجية
 - **الأثر على السمعة:** فقدان ثقة العملاء وأصحاب المصلحة
-- **الأثر القانوني:** عقوبات تنظيمية محتملة ومسؤولية قانونية
+- **الأثر القانوني:** عقوبات تنظيمية محتملة
 - **تصنيف الخطورة:** عالي
 
-**٣. تقييم الاحتمالية**
-- **مستوى التهديد:** متوسط إلى عالي بناءً على بيئة التهديدات الحالية
-- **التعرض للثغرات:** يتطلب تقييم تفصيلي للضوابط الحالية
+**٤. تقييم الاحتمالية**
+- **مستوى التهديد:** متوسط إلى عالي
+- **التعرض للثغرات:** يتطلب تقييم تفصيلي
 - **تصنيف الاحتمالية:** متوسط
 
-**٤. مصفوفة تصنيف المخاطر**
+**٥. مصفوفة تصنيف المخاطر**
 
 | المقياس | القيمة |
 |---------|--------|
@@ -1079,7 +1446,11 @@ IMPORTANT: Ensure all analysis is specific to the {domain} domain, not generic.
 | فعالية الضوابط | متوسطة |
 | الخطر المتبقي | متوسط-عالي |
 
-**٥. استراتيجية التخفيف**
+**٦. الضوابط الموصى بها لمجال {domain_ar}**
+
+{controls_text}
+
+**٧. استراتيجية التخفيف**
 
 **إجراءات فورية (٠-٣٠ يوم):**
 - مراجعة وتعزيز الضوابط الحالية
@@ -1092,19 +1463,13 @@ IMPORTANT: Ensure all analysis is specific to the {domain} domain, not generic.
 - تدريب الموظفين المعنيين
 
 **طويلة المدى (٣-١٢ شهر):**
-- تعزيز البنية الأمنية
+- تعزيز البنية
 - تطبيق أتمتة الضوابط
 - مراجعة شاملة للبرنامج
 
-**٦. مؤشرات المخاطر الرئيسية (KRIs)**
-- عدد الحوادث المكتشفة: العتبة < ٥ شهرياً
-- وقت الاكتشاف: العتبة < ٤ ساعات
-- معدل إغلاق الثغرات: العتبة > ٩٠٪
+**٨. مؤشرات المخاطر الرئيسية (KRIs)**
 
-**٧. توصيات الضوابط**
-- **ضوابط وقائية:** تعزيز التحكم في الوصول، التشفير، التوعية
-- **ضوابط كشفية:** المراقبة المستمرة، التنبيهات، التدقيق
-- **ضوابط تصحيحية:** خطط الاستجابة، النسخ الاحتياطي، التعافي
+{kri_table}
 
 ---
 *تم إنشاء هذا التحليل بواسطة نظام ميزان للحوكمة والمخاطر والامتثال*
@@ -2076,37 +2441,68 @@ This audit assessed the organization's control environment against target framew
 
 **Methodology:** Risk-based audit approach following ISO 19011 guidelines
 
+**Evidence Collection:**
+- Policy and procedure documentation review
+- System configuration screenshots and reports
+- Interview notes from process owners
+- Sample testing of control effectiveness
+- Log file and access control analysis
+
+**Sample Sizes:**
+- Small population (<50): All items or 25%
+- Medium population (50-500): 25-50 items (95% confidence)
+- Large population (>500): Statistical sample of 59 items (95% confidence, 10% error margin)
+
 **Limitations:** Assessment based on provided documentation; on-site verification recommended for certification readiness.
 
 **3. Key Findings**
 
 **Finding 1: Access Control Review Gaps (HIGH PRIORITY)**
-- **Control Reference:** IAM-04 (Access Review)
-- **Observation:** No evidence of quarterly access reviews for critical systems
-- **Risk Impact:** Privilege accumulation increasing insider threat exposure
+- **Control Reference:** IAM-04 (Access Review), NCA ECC 2-3-1
+- **Observation:** No evidence of quarterly access reviews for critical systems. 23% of sampled privileged accounts lack MFA.
+- **Evidence Reviewed:** AD privileged group listing (50 accounts), Access review records (12 months), PAM coverage report
+- **Sample Size:** 50 privileged accounts from population of 187
+- **Root Cause:** Process: Undocumented PAM onboarding process; Technology: Legacy systems not integrated with PAM
+- **Risk Impact:** Privilege accumulation increasing insider threat exposure; potential NCA non-compliance
 - **Recommendation:** Implement automated access certification with quarterly cadence
+- **Management Response:** [To be completed within 30 days]
 - **Target Date:** Q1 2025
+- **Estimated Effort:** Medium (2-3 months, 1.5 FTE)
 
 **Finding 2: Password Policy Non-Compliance (MEDIUM PRIORITY)**
-- **Control Reference:** IAM-02 (Authentication)
+- **Control Reference:** IAM-02 (Authentication), ISO 27001 A.9.4.3
 - **Observation:** Password complexity below 12-character minimum requirement
+- **Evidence Reviewed:** Password policy document, AD Group Policy settings, Sample password audit
+- **Sample Size:** 200 user accounts
+- **Root Cause:** Technology: Group Policy not updated; Governance: Policy update process not followed
 - **Risk Impact:** Increased susceptibility to brute force attacks
 - **Recommendation:** Update password policy and enforce via technical controls
+- **Management Response:** [To be completed within 30 days]
 - **Target Date:** Immediate
+- **Estimated Effort:** Low (1-2 weeks, 0.5 FTE)
 
 **Finding 3: Incident Response Documentation (MEDIUM PRIORITY)**
-- **Control Reference:** IR-01 (Incident Management)
+- **Control Reference:** IR-01 (Incident Management), NCA ECC 2-9-1
 - **Observation:** Incident response plan not tested in past 12 months
+- **Evidence Reviewed:** IR plan document, Test records, Incident logs (6 months)
+- **Root Cause:** People: Resource constraints; Process: No scheduled testing requirement
 - **Risk Impact:** Potential delays in incident containment and recovery
 - **Recommendation:** Schedule tabletop exercise and update procedures
+- **Management Response:** [To be completed within 30 days]
 - **Target Date:** Q1 2025
+- **Estimated Effort:** Medium (1 month, 1.0 FTE)
 
 **Finding 4: Third-Party Risk Assessment (LOW PRIORITY)**
-- **Control Reference:** TPM-03 (Vendor Assessment)
+- **Control Reference:** TPM-03 (Vendor Assessment), ISO 27001 A.15.1
 - **Observation:** Security assessments completed for 70% of critical vendors
+- **Evidence Reviewed:** Vendor register, Assessment reports, Contract review
+- **Sample Size:** 15 critical vendors from 22 total
+- **Root Cause:** Process: No vendor assessment schedule; People: Procurement team capacity
 - **Risk Impact:** Unknown risk exposure from unassessed vendors
 - **Recommendation:** Complete critical vendor assessments by Q2 2025
+- **Management Response:** [To be completed within 30 days]
 - **Target Date:** Q2 2025
+- **Estimated Effort:** Medium (3 months, 0.5 FTE)
 
 **4. Positive Observations**
 
@@ -2114,24 +2510,45 @@ This audit assessed the organization's control environment against target framew
 ✓ Well-documented information security policy framework
 ✓ Active security awareness training program (78% completion)
 ✓ Established vulnerability management process
+✓ Regular security committee meetings with documented minutes
 
-**5. Recommendations Summary**
+**5. Root Cause Analysis Summary**
 
-| Priority | Finding | Owner | Target |
-|----------|---------|-------|--------|
-| High | Access Review Implementation | IT Security | Q1 2025 |
-| Medium | Password Policy Update | IT Operations | Immediate |
-| Medium | IR Plan Testing | Security Lead | Q1 2025 |
-| Low | Vendor Assessment Completion | Procurement | Q2 2025 |
+| Category | Count | Examples |
+|----------|-------|----------|
+| People (Skills/Resources) | 2 | Resource constraints, capacity limitations |
+| Process (Design/Execution) | 3 | Undocumented processes, schedule gaps |
+| Technology (Systems/Tools) | 2 | Legacy integration, policy enforcement |
+| Governance (Policy/Oversight) | 1 | Policy update process |
 
-**6. Conclusion**
+**6. Recommendations Summary**
+
+| Priority | Finding | Owner | Target | Effort | Status |
+|----------|---------|-------|--------|--------|--------|
+| High | Access Review Implementation | IT Security | Q1 2025 | Medium | Not Started |
+| Medium | Password Policy Update | IT Operations | Immediate | Low | Not Started |
+| Medium | IR Plan Testing | Security Lead | Q1 2025 | Medium | Not Started |
+| Low | Vendor Assessment Completion | Procurement | Q2 2025 | Medium | Not Started |
+
+**7. Management Action Plan Template**
+
+| Finding ID | Agreed (Y/N) | Action Plan | Owner | Target Date | Resources | Status |
+|------------|--------------|-------------|-------|-------------|-----------|--------|
+| F-01 | | | | | | Not Started |
+| F-02 | | | | | | Not Started |
+| F-03 | | | | | | Not Started |
+| F-04 | | | | | | Not Started |
+
+**8. Conclusion**
 
 The organization has established foundational security controls but requires focused remediation on identified gaps to achieve compliance certification. We recommend prioritizing high-risk findings and establishing a remediation tracking process.
 
 **Next Steps:**
 1. Management response to findings within 30 days
 2. Remediation plan development with assigned owners
-3. Follow-up assessment scheduled for Q2 2025
+3. Resource allocation and budget approval
+4. Implementation tracking through GRC platform
+5. Follow-up assessment scheduled for Q2 2025
 
 ---
 **Confidence Score: 78/100**
@@ -2139,6 +2556,8 @@ The organization has established foundational security controls but requires foc
 **Basis:** Assessment confidence reflects evidence quality and scope. Higher confidence requires on-site verification, interviews, and technical testing. Findings may be updated with additional evidence submission.
 
 **Assumptions:** Current threat landscape, stable regulatory requirements, management commitment to remediation.
+
+**Quality Assurance:** This report has been prepared in accordance with ISO 19011 audit guidelines and Big4 quality standards. Independent review completed prior to issuance.
 """,
     
     ResponseType.RISK: """
@@ -2148,46 +2567,144 @@ The organization has established foundational security controls but requires foc
 
 The identified risk scenario presents a significant threat to organizational operations with potential for material business impact.
 
+**Risk ID:** RISK-2025-001
+**Risk Category:** Operational / Technology
+**Risk Owner:** [To be assigned]
+
 **2. تقييم الأثر | Impact Assessment**
 
-- **Financial Impact:** Potential losses of SAR 500,000 - 2,000,000
-- **Operational Impact:** Service disruption of 24-72 hours
-- **Reputational Impact:** Moderate stakeholder concern
-- **Severity Rating:** HIGH
+| Impact Dimension | Rating | Description |
+|------------------|--------|-------------|
+| Financial | High | Potential losses of SAR 500,000 - 2,000,000 |
+| Operational | High | Service disruption of 24-72 hours |
+| Reputational | Medium | Moderate stakeholder concern, media attention possible |
+| Legal/Regulatory | Medium | Potential regulatory scrutiny, compliance impact |
+| Strategic | Medium | Impact on digital transformation initiatives |
+
+**Severity Rating:** HIGH (4 out of 5)
 
 **3. تقييم الاحتمالية | Likelihood Assessment**
 
-- **Threat Capability:** Moderate to High
-- **Vulnerability Exposure:** Medium
-- **Probability Rating:** MEDIUM-HIGH
+| Factor | Assessment |
+|--------|------------|
+| Threat Capability | Moderate to High |
+| Historical Frequency | Similar incidents in industry (2-3 per year) |
+| Vulnerability Exposure | Medium (some controls in place) |
+| Control Environment | Partially effective |
 
-**4. استراتيجية التخفيف | Mitigation Strategy**
+**Probability Rating:** MEDIUM-HIGH (3.5 out of 5)
 
-**Immediate (0-30 days):**
-- Implement compensating controls
-- Enhance monitoring for early detection
-- Update incident response procedures
+**4. مصفوفة المخاطر | Risk Matrix**
+
+```
+           Impact
+           1   2   3   4   5
+        ┌───┬───┬───┬───┬───┐
+      5 │ M │ H │ H │ C │ C │
+        ├───┼───┼───┼───┼───┤
+      4 │ L │ M │ H │ H │ C │
+L       ├───┼───┼───┼───┼───┤
+i     3 │ L │ M │ M │ H │ H │  ← Current Position
+k       ├───┼───┼───┼───┼───┤
+e     2 │ L │ L │ M │ M │ H │
+l       ├───┼───┼───┼───┼───┤
+i     1 │ L │ L │ L │ M │ M │
+h       └───┴───┴───┴───┴───┘
+o
+o       L=Low  M=Medium  H=High  C=Critical
+d
+```
+
+| Risk Score | Value | Classification |
+|------------|-------|----------------|
+| Inherent Risk | 17.5 | HIGH |
+| Control Effectiveness | 50% | Partial |
+| Residual Risk | 10.5 | MEDIUM-HIGH |
+| Risk Appetite | 8.0 | MEDIUM |
+| Gap to Appetite | +2.5 | Above tolerance |
+
+**5. استراتيجية التخفيف | Mitigation Strategy**
+
+**Immediate Actions (0-30 days):**
+| Action | Owner | Cost (SAR) | Priority |
+|--------|-------|------------|----------|
+| Implement compensating controls | Security Lead | 50,000 | Critical |
+| Enhance monitoring for early detection | SOC Manager | 25,000 | Critical |
+| Update incident response procedures | IR Lead | 10,000 | High |
+| Communicate to stakeholders | Communications | 5,000 | High |
 
 **Short-Term (1-3 months):**
-- Deploy technical controls
-- Conduct staff awareness training
-- Establish vendor requirements
+| Action | Owner | Cost (SAR) | Priority |
+|--------|-------|------------|----------|
+| Deploy technical controls | IT Security | 200,000 | High |
+| Conduct staff awareness training | HR/Training | 30,000 | Medium |
+| Establish vendor requirements | Procurement | 15,000 | Medium |
+| Implement additional monitoring | SOC | 75,000 | High |
 
 **Long-Term (3-12 months):**
-- Architecture improvements
-- Process automation
-- Continuous improvement program
+| Action | Owner | Cost (SAR) | Priority |
+|--------|-------|------------|----------|
+| Architecture improvements | Enterprise Arch | 500,000 | Medium |
+| Process automation | Operations | 150,000 | Medium |
+| Continuous improvement program | Risk Management | 100,000 | Low |
 
-**5. مؤشرات المخاطر | Key Risk Indicators**
+**Total Mitigation Investment:** SAR 1,160,000
 
-- Monitor for anomalous activity
-- Track control effectiveness metrics
-- Regular vulnerability assessments
+**6. مؤشرات المخاطر الرئيسية | Key Risk Indicators (KRIs)**
+
+| KRI | Current | Threshold (Yellow) | Threshold (Red) | Frequency |
+|-----|---------|-------------------|-----------------|-----------|
+| Security incidents detected | 3/month | >5 | >10 | Weekly |
+| Time to detect (MTTD) | 6 hours | >8 hours | >24 hours | Weekly |
+| Control test failures | 2% | >5% | >10% | Monthly |
+| Vulnerability backlog (critical) | 5 | >10 | >20 | Weekly |
+| Third-party risk findings | 8 | >15 | >25 | Monthly |
+
+**7. توصيات الضوابط | Control Recommendations**
+
+**Preventive Controls:**
+- [ ] Access control enhancements (MFA, PAM)
+- [ ] Network segmentation
+- [ ] Security awareness training
+- [ ] Vendor security requirements
+- [ ] Data encryption (at rest and in transit)
+
+**Detective Controls:**
+- [ ] SIEM rule tuning and enhancement
+- [ ] User behavior analytics (UEBA)
+- [ ] File integrity monitoring
+- [ ] Network traffic analysis
+- [ ] Log correlation and alerting
+
+**Corrective Controls:**
+- [ ] Incident response playbooks
+- [ ] Backup and recovery procedures
+- [ ] Business continuity plans
+- [ ] Crisis communication plan
+- [ ] Forensic investigation capability
+
+**8. خطة متابعة المخاطر | Risk Monitoring Plan**
+
+| Activity | Frequency | Owner | Output |
+|----------|-----------|-------|--------|
+| KRI monitoring | Weekly | Risk Analyst | Dashboard update |
+| Control testing | Monthly | Internal Audit | Test results |
+| Risk reassessment | Quarterly | Risk Manager | Updated risk register |
+| Board reporting | Quarterly | CISO/CRO | Executive summary |
+| External assessment | Annual | Third Party | Independent review |
 
 ---
 **Confidence Score: 75/100**
 
 This analysis is based on provided information about the asset, threat, and existing controls. For a more precise assessment, a comprehensive field-based risk assessment is recommended.
+
+**Risk Appetite Alignment:** Current residual risk (10.5) exceeds organizational risk appetite (8.0). Management decision required on risk treatment options:
+1. **Mitigate** - Implement recommended controls (Recommended)
+2. **Transfer** - Consider cyber insurance coverage
+3. **Accept** - Document exception with executive approval
+4. **Avoid** - Discontinue high-risk activities
+
+**Next Review Date:** [Date + 90 days]
 """,
     
     ResponseType.GENERAL: """

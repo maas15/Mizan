@@ -105,7 +105,7 @@ except ImportError as e:
 
 # Text processing
 try:
-    from utils.text_processing import pdf_extractor, text_processor, roadmap_parser
+    from utils.text_processing import pdf_extractor, text_processor
 except ImportError as e:
     print(f"❌ Text processing import error: {e}")
     raise
@@ -149,17 +149,24 @@ except ImportError as e:
     print(f"❌ UI components import error: {e}")
     raise
 
-# AI Service - try enhanced first
+# AI Service - try v3 (pure AI-driven) first, then fallbacks
 try:
-    from services.ai_service_v2 import ai_service, ResponseType
-    print("✅ Using enhanced AI service")
+    from services.ai_service_v3 import ai_service, ResponseType
+    AI_SERVICE_VERSION = "v3"
+    print("✅ Using AI Service V3 (Pure AI-driven - requires OpenAI API key)")
 except ImportError:
     try:
-        from services.ai_service import ai_service, ResponseType
-        print("⚠️ Using standard AI service")
-    except ImportError as e:
-        print(f"❌ AI service import error: {e}")
-        raise
+        from services.ai_service_v2 import ai_service, ResponseType
+        AI_SERVICE_VERSION = "v2"
+        print("⚠️ Using AI Service V2 (with template fallback)")
+    except ImportError:
+        try:
+            from services.ai_service import ai_service, ResponseType
+            AI_SERVICE_VERSION = "v1"
+            print("⚠️ Using AI Service V1 (basic)")
+        except ImportError as e:
+            print(f"❌ AI service import error: {e}")
+            raise
 
 # Risk Data - try enhanced first
 try:
@@ -278,29 +285,26 @@ def handle_registration(username: str, password: str) -> tuple:
 # =============================================================================
 
 def render_login_page():
-    st.markdown("<br><br>", unsafe_allow_html=True)
+    """Render premium login page with branding."""
+    from components.ui_components import render_brand_header, render_creator_footer
+    
+    st.markdown("<br>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        # Display logo if available
+        # Display logo if available, otherwise premium brand header
         logo_path = APP_DIR / "logo.png"
         if logo_path.exists():
             st.image(str(logo_path), use_container_width=True)
+            st.markdown(f"""
+            <div style="text-align: center; padding: 16px 0;">
+                <p style="color: #a8b2d1; font-size: 14px; letter-spacing: 3px; text-transform: uppercase; margin: 0;">{config.APP_TAGLINE}</p>
+                <p style="color: #8892b0; font-size: 12px; margin-top: 8px;">Version {config.APP_VERSION}</p>
+            </div>
+            """, unsafe_allow_html=True)
         else:
-            # Fallback to text header
-            st.markdown(
-                f"""<div style="background-color: #FFFFFF; padding: 40px; border-radius: 12px; 
-                    border: 1px solid #E2E8F0; text-align: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-                    <h1 style="color: #2563EB; margin-bottom: 0;">{config.APP_ICON} {config.APP_NAME}</h1>
-                    <p style="color: #64748B;">Enterprise GRC Operating System</p>
-                    <p style="color: #94A3B8; font-size: 12px;">v{config.APP_VERSION}</p>
-                </div>""", unsafe_allow_html=True)
-        
-        st.markdown(
-            f"""<div style="text-align: center; padding: 10px;">
-                <p style="color: #64748B; margin: 0;">Enterprise GRC Operating System</p>
-                <p style="color: #94A3B8; font-size: 12px;">v{config.APP_VERSION}</p>
-            </div>""", unsafe_allow_html=True)
+            # Premium brand header
+            render_brand_header(config.APP_NAME, config.APP_TAGLINE, config.APP_VERSION, config.APP_ICON)
         
         lang_opt = st.radio("language", ["English", "العربية"], horizontal=True, label_visibility="collapsed")
         txt = get_translation(lang_opt)
@@ -338,7 +342,8 @@ def render_login_page():
                         else:
                             st.error(error)
         
-        login_footer(config.CREATOR_NAME)
+        # Premium creator footer
+        render_creator_footer(config.CREATOR_NAME, config.CREATOR_TITLE, config.COPYRIGHT_YEAR)
 
 # =============================================================================
 # ADMIN DASHBOARD
@@ -380,31 +385,7 @@ def render_admin_dashboard():
 # STRATEGY HELPERS
 # =============================================================================
 
-def build_roadmap(domain_code: str, org_inputs: dict, gap_summary: dict) -> pd.DataFrame:
-    size = org_inputs.get("size", "Small")
-    size_factor = 1.0
-    if "Medium" in size or "متوسطة" in size:
-        size_factor = 1.6
-    elif "Large" in size or "كبيرة" in size:
-        size_factor = 2.5
-    
-    initiatives = [
-        ["0–3 months", "Establish governance framework", 3 * size_factor, 300000 * size_factor, "GRC Lead", "Policy coverage %"],
-        ["0–3 months", "Implement IAM/MFA baseline", 4 * size_factor, 800000 * size_factor, "IAM Lead", "MFA coverage %"],
-        ["3–12 months", "Deploy SIEM & monitoring", 6 * size_factor, 1200000 * size_factor, "SOC Lead", "MTTD"],
-        ["3–12 months", "Third-party risk program", 3 * size_factor, 350000 * size_factor, "Vendor Risk", "Vendor coverage %"],
-        ["12–36 months", "Zero Trust architecture", 12 * size_factor, 2000000 * size_factor, "Security Arch", "Segmentation %"],
-    ]
-    
-    df = pd.DataFrame(initiatives, columns=["Phase", "Initiative", "Duration", "Cost", "Role", "KPI"])
-    df["Duration"] = df["Duration"].round(1)
-    df["Cost"] = df["Cost"].round(0)
-    
-    start = datetime.today()
-    df["Start"] = [start + pd.DateOffset(months=i * 3) for i in range(len(df))]
-    df["Finish"] = [s + pd.DateOffset(months=int(d)) for s, d in zip(df["Start"], df["Duration"])]
-    
-    return df
+# build_roadmap function removed - implementation timeline table no longer used
 
 # =============================================================================
 # MAIN APPLICATION
@@ -418,10 +399,14 @@ def render_main_application():
         return
     
     with st.sidebar:
-        # Display logo in sidebar
+        from components.ui_components import render_sidebar_brand, render_creator_footer
+        
+        # Display logo or brand in sidebar
         logo_path = APP_DIR / "logo.png"
         if logo_path.exists():
             st.image(str(logo_path), use_container_width=True)
+        else:
+            render_sidebar_brand(config.APP_NAME, config.APP_ICON)
         
         lang_opt = st.radio("Language", ["English", "العربية"], horizontal=True, label_visibility="collapsed")
         txt = get_translation(lang_opt)
@@ -430,13 +415,17 @@ def render_main_application():
             load_rtl_css()
         
         st.markdown("---")
-        st.markdown(f"## {txt['sidebar_title']}")
-        st.caption(txt['sidebar_caption'])
-        st.markdown(f"**{config.CREATOR_NAME}**")
-        st.caption(f"👤 {username}")
         
-        with st.expander(txt.get("settings", "Settings")):
-            if st.button(txt.get("clear_hist", "Clear History")):
+        # User info with premium styling
+        st.markdown(f"""
+        <div style="padding: 16px; background: rgba(102, 126, 234, 0.1); border-radius: 12px; border: 1px solid rgba(102, 126, 234, 0.2); margin-bottom: 16px;">
+            <div style="font-size: 12px; color: #8892b0; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">👤 Logged in as</div>
+            <div style="font-size: 16px; font-weight: 600; color: #fff;">{username}</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        with st.expander(txt.get("settings", "⚙️ Settings")):
+            if st.button(txt.get("clear_hist", "🗑️ Clear History")):
                 risk_repo.delete_by_owner(username)
                 project_repo.delete_by_owner(username)
                 st.success("Cleared!")
@@ -447,18 +436,46 @@ def render_main_application():
             st.rerun()
         
         st.markdown("---")
+        
+        # AI Status with premium styling
         if ai_service.is_available:
-            st.success("✅ Connected to AI Core")
+            st.markdown("""
+            <div style="padding: 12px; background: rgba(17, 153, 142, 0.2); border-radius: 8px; border: 1px solid rgba(17, 153, 142, 0.3);">
+                <span style="color: #38ef7d;">✅ AI Core Connected</span>
+            </div>
+            """, unsafe_allow_html=True)
         else:
-            st.warning("⚠️ AI Core unavailable - Simulation Mode")
+            st.markdown("""
+            <div style="padding: 12px; background: rgba(245, 175, 25, 0.2); border-radius: 8px; border: 1px solid rgba(245, 175, 25, 0.3);">
+                <span style="color: #f5af19;">⚠️ Simulation Mode</span>
+            </div>
+            """, unsafe_allow_html=True)
             with st.expander("Debug Info"):
                 api_key = os.getenv("OPENAI_API_KEY")
                 if api_key:
                     st.code(f"Key: {api_key[:8]}...{api_key[-4:]}")
                 else:
                     st.error("No OPENAI_API_KEY")
+        
+        # Creator credit in sidebar
+        st.markdown("---")
+        st.markdown(f"""
+        <div style="text-align: center; padding: 16px 8px;">
+            <div style="font-size: 10px; color: #8892b0; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">Created by</div>
+            <div style="font-size: 12px; font-weight: 600; background: linear-gradient(135deg, #f5af19 0%, #f12711 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{config.CREATOR_NAME}</div>
+            <div style="font-size: 10px; color: #8892b0; margin-top: 4px;">© {config.COPYRIGHT_YEAR}</div>
+        </div>
+        """, unsafe_allow_html=True)
     
-    st.title(f"{config.APP_ICON} {txt['sidebar_title']}")
+    # Main page title with premium styling
+    st.markdown(f"""
+    <div style="margin-bottom: 24px;">
+        <h1 style="font-family: 'Playfair Display', serif; font-size: 42px; margin: 0;">
+            {config.APP_ICON} {txt['sidebar_title']}
+        </h1>
+        <p style="color: #a8b2d1; font-size: 14px; margin-top: 8px; letter-spacing: 1px;">{config.APP_TAGLINE}</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Metrics
     df_projects = project_repo.get_by_owner(username)
@@ -497,8 +514,6 @@ def render_main_application():
                 render_audit_tab(username, domain_name, logic_code, txt)
             with func_tabs[3]:
                 render_risk_tab(username, domain_name, logic_code, txt)
-            with func_tabs[4]:
-                render_roadmap_tab(username, domain_name, logic_code, txt)
 
 
 def render_strategy_tab(username: str, domain_name: str, logic_code: str, txt: dict, lang_opt: str):
@@ -510,7 +525,7 @@ def render_strategy_tab(username: str, domain_name: str, logic_code: str, txt: d
     # Get section titles based on language
     section_titles = txt.get("strategy_sections", {
         "vision": "Vision", "gaps": "Gaps", "pillars": "Pillars", 
-        "roadmap": "Roadmap", "kpis": "KPIs", "confidence": "Confidence"
+        "investment": "Investment", "kpis": "KPIs", "confidence": "Confidence"
     })
     
     if current_step == 1:
@@ -597,8 +612,11 @@ def render_strategy_tab(username: str, domain_name: str, logic_code: str, txt: d
         
         if st.button(txt["btn_gen"], key=f"gen_{logic_code}"):
             with st.spinner("🚀 Generating Big4-Level Strategy..."):
-                gap_summary = {"compliance_score": 75, "gap_count": 5, "top_gap_controls": {"Unified.GOV": 2}}
-                roadmap_df = build_roadmap(logic_code, inputs, gap_summary)
+                # Get user's actual assessment data - NO hardcoded values
+                gap_summary = SessionManager.get(f"gap_assessment_{logic_code}", {})
+                # If no assessment done, pass empty - let AI know no data provided
+                if not gap_summary:
+                    gap_summary = {}  # Empty = user hasn't done assessment
                 
                 # Map UI language to actual language
                 lang_map = {"الإنجليزية": "English", "العربية": "Arabic", "ثنائي اللغة": "Bilingual"}
@@ -621,7 +639,7 @@ def render_strategy_tab(username: str, domain_name: str, logic_code: str, txt: d
                     "horizon": inputs.get("time"), 
                     "language": actual_lang,
                     "gap_data": gap_summary,
-                    "benchmark": benchmark_data  # Add benchmark data to context
+                    "benchmark": benchmark_data
                 }
                 
                 ai_response = ai_service.generate_strategy(ai_context)
@@ -634,17 +652,14 @@ def render_strategy_tab(username: str, domain_name: str, logic_code: str, txt: d
                     "vision": sections[0],
                     "gaps": sections[1],
                     "pillars": sections[2],
-                    "roadmap": sections[3],
+                    "investment": sections[3],
                     "kpis": sections[4],
                     "confidence": sections[5],
                 }
                 
                 SessionManager.set(f"out_{logic_code}", out_sections)
-                SessionManager.set(f"roadmap_{logic_code}", roadmap_df)
                 SessionManager.set(f"doc_lang_{logic_code}", actual_lang)
                 SessionManager.set(f"org_name_{logic_code}", inputs.get("org", "Organization"))
-                
-                project_repo.save_roadmap(username, domain_name, roadmap_df)
                 
                 SessionManager.set(step_key, 3)
                 st.rerun()
@@ -653,19 +668,18 @@ def render_strategy_tab(username: str, domain_name: str, logic_code: str, txt: d
         st.success("✅ Strategy Generated")
         
         out = SessionManager.get(f"out_{logic_code}", {})
-        roadmap_df = SessionManager.get(f"roadmap_{logic_code}", pd.DataFrame())
         doc_lang = SessionManager.get(f"doc_lang_{logic_code}", "English")
         org_name = SessionManager.get(f"org_name_{logic_code}", "Organization")
         
         # Download buttons row
         st.markdown("### 📥 Download Options")
-        dl_col1, dl_col2, dl_col3 = st.columns(3)
+        dl_col1, dl_col2 = st.columns(2)
         
         with dl_col1:
             # Strategy DOCX download
             try:
                 from utils.export_utils import generate_strategy_docx
-                strategy_docx = generate_strategy_docx(org_name, domain_name, out, roadmap_df, doc_lang)
+                strategy_docx = generate_strategy_docx(org_name, domain_name, out, pd.DataFrame(), doc_lang)
                 if strategy_docx:
                     st.download_button(
                         label="📄 Strategy (Word)",
@@ -678,26 +692,11 @@ def render_strategy_tab(username: str, domain_name: str, logic_code: str, txt: d
                 st.caption(f"Word export unavailable: {e}")
         
         with dl_col2:
-            # Roadmap Excel download
-            try:
-                from utils.export_utils import generate_roadmap_excel
-                roadmap_excel = generate_roadmap_excel(roadmap_df, org_name, domain_name)
-                st.download_button(
-                    label="📊 Roadmap (Excel)",
-                    data=roadmap_excel,
-                    file_name=f"roadmap_{logic_code}_{datetime.now().strftime('%Y%m%d')}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    key=f"dl_road_{logic_code}"
-                )
-            except Exception as e:
-                st.caption(f"Excel export unavailable: {e}")
-        
-        with dl_col3:
             # Combined strategy as markdown/text
-            full_strategy = f"# Strategic Roadmap: {org_name}\n\n"
+            full_strategy = f"# Strategy: {org_name}\n\n"
             full_strategy += f"**Domain:** {domain_name}\n"
             full_strategy += f"**Generated:** {datetime.now().strftime('%Y-%m-%d')}\n\n"
-            for key in ["vision", "gaps", "pillars", "roadmap", "kpis", "confidence"]:
+            for key in ["vision", "gaps", "pillars", "investment", "kpis", "confidence"]:
                 full_strategy += f"## {section_titles.get(key, key)}\n\n{out.get(key, 'N/A')}\n\n"
             
             st.download_button(
@@ -710,32 +709,30 @@ def render_strategy_tab(username: str, domain_name: str, logic_code: str, txt: d
         
         st.markdown("---")
         
-        # Use translated section titles
+        # Use translated section titles - removed roadmap
         tab_labels = [
             section_titles.get("vision", "Vision"),
             section_titles.get("gaps", "Gaps"),
             section_titles.get("pillars", "Pillars"),
-            section_titles.get("roadmap", "Roadmap"),
+            section_titles.get("investment", "Investment"),
             section_titles.get("kpis", "KPIs")
         ]
         
         tabs = st.tabs(tab_labels)
-        section_keys = ["vision", "gaps", "pillars", "roadmap", "kpis"]
-        
-        # Apply RTL styling for Arabic
-        rtl_style = "direction: rtl; text-align: right;" if doc_lang == "Arabic" else ""
+        section_keys = ["vision", "gaps", "pillars", "investment", "kpis"]
         
         for tab, key in zip(tabs, section_keys):
             with tab:
                 content = out.get(key, "N/A")
-                if rtl_style:
-                    st.markdown(f"<div style='{rtl_style}'>{content}</div>", unsafe_allow_html=True)
+                if doc_lang == "Arabic":
+                    # Use comprehensive Arabic styling
+                    st.markdown(f"""
+                    <div class="arabic-content strategy-output-ar">
+                        {content}
+                    </div>
+                    """, unsafe_allow_html=True)
                 else:
                     st.markdown(content)
-        
-        if not roadmap_df.empty:
-            st.markdown("### Implementation Timeline")
-            st.dataframe(roadmap_df[["Phase", "Initiative", "Duration", "Cost", "Role", "KPI"]], use_container_width=True)
         
         if st.button(txt["btn_reset"], key=f"reset_{logic_code}"):
             SessionManager.set(step_key, 1)
@@ -805,9 +802,11 @@ def render_policy_tab(username: str, domain_name: str, logic_code: str, txt: dic
         
         st.markdown("---")
         
-        # Apply RTL styling for Arabic
-        rtl_style = "direction: rtl; text-align: right;" if stored_lang == "Arabic" else ""
-        st.markdown(f"<div class='policy-paper' style='{rtl_style}'>{policy}</div>", unsafe_allow_html=True)
+        # Apply proper styling for Arabic
+        if stored_lang == "Arabic":
+            st.markdown(f"<div class='policy-paper-ar arabic-content'>{policy}</div>", unsafe_allow_html=True)
+        else:
+            st.markdown(f"<div class='policy-paper'>{policy}</div>", unsafe_allow_html=True)
 
 
 def render_audit_tab(username: str, domain_name: str, logic_code: str, txt: dict):
@@ -881,9 +880,11 @@ def render_audit_tab(username: str, domain_name: str, logic_code: str, txt: dict
         
         st.markdown("---")
         
-        # Apply RTL styling for Arabic
-        rtl_style = "direction: rtl; text-align: right;" if stored_lang == "Arabic" else ""
-        st.markdown(f"<div class='policy-paper' style='{rtl_style}'>{audit}</div>", unsafe_allow_html=True)
+        # Apply proper styling for Arabic
+        if stored_lang == "Arabic":
+            st.markdown(f"<div class='policy-paper-ar arabic-content'>{audit}</div>", unsafe_allow_html=True)
+        else:
+            st.markdown(f"<div class='policy-paper'>{audit}</div>", unsafe_allow_html=True)
 
 
 def render_risk_tab(username: str, domain_name: str, logic_code: str, txt: dict):
@@ -908,6 +909,11 @@ def render_risk_tab(username: str, domain_name: str, logic_code: str, txt: dict)
         except Exception as e:
             st.caption(f"Excel export unavailable: {e}")
         st.markdown("---")
+    
+    # Language selection for risk analysis
+    doc_lang = st.selectbox(txt["doc_lang"], txt["doc_opts"], key=f"risk_lang_{logic_code}")
+    lang_map = {"الإنجليزية": "English", "العربية": "Arabic", "ثنائي اللغة": "Bilingual"}
+    actual_lang = lang_map.get(doc_lang, doc_lang)
     
     with st.form(f"risk_{logic_code}"):
         col1, col2 = st.columns(2)
@@ -935,7 +941,7 @@ def render_risk_tab(username: str, domain_name: str, logic_code: str, txt: dict)
             if asset:
                 with st.spinner("Analyzing risk..."):
                     response = ai_service.generate_risk_analysis(
-                        domain_name, threat, asset, {"notes": context}
+                        domain_name, threat, asset, {"notes": context}, actual_lang
                     )
                     
                     risk_repo.create(
@@ -947,14 +953,20 @@ def render_risk_tab(username: str, domain_name: str, logic_code: str, txt: dict)
                     
                     st.success(txt["risk_saved"])
                     SessionManager.set(f"risk_analysis_{logic_code}", response.content)
+                    SessionManager.set(f"risk_lang_{logic_code}", actual_lang)
                     time.sleep(1)
                     st.rerun()
     
-    # Display last analysis
+    # Display last analysis with proper language styling
     analysis = SessionManager.get(f"risk_analysis_{logic_code}")
+    stored_risk_lang = SessionManager.get(f"risk_lang_{logic_code}", "English")
+    
     if analysis:
         st.markdown("### Risk Analysis Results")
-        st.markdown(analysis)
+        if stored_risk_lang == "Arabic":
+            st.markdown(f"<div class='arabic-content strategy-output-ar'>{analysis}</div>", unsafe_allow_html=True)
+        else:
+            st.markdown(analysis)
     
     # Show existing risks
     if not df_risks.empty:
@@ -963,43 +975,7 @@ def render_risk_tab(username: str, domain_name: str, logic_code: str, txt: dict)
         st.dataframe(df_risks[display_cols], use_container_width=True)
 
 
-def render_roadmap_tab(username: str, domain_name: str, logic_code: str, txt: dict):
-    """Render roadmap tab with download option."""
-    projects = project_repo.get_by_owner(username, domain_name)
-    
-    if not projects.empty:
-        # Download button
-        st.markdown("### 📥 Download Roadmap")
-        try:
-            from utils.export_utils import generate_roadmap_excel
-            roadmap_excel = generate_roadmap_excel(projects, username, domain_name)
-            st.download_button(
-                label="📊 Roadmap (Excel)",
-                data=roadmap_excel,
-                file_name=f"roadmap_{logic_code}_{datetime.now().strftime('%Y%m%d')}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key=f"dl_roadmap_{logic_code}"
-            )
-        except Exception as e:
-            st.caption(f"Excel export unavailable: {e}")
-        
-        st.markdown("---")
-        
-        # Gantt chart
-        try:
-            import plotly.express as px
-            fig = px.timeline(projects, x_start="Start", x_end="Finish", y="Initiative", color="Phase",
-                             title="Implementation Timeline")
-            fig.update_layout(xaxis_title="Timeline", yaxis_title="Initiative")
-            st.plotly_chart(fig, use_container_width=True)
-        except Exception as e:
-            logger.warning(f"Gantt chart error: {e}")
-        
-        # Data table
-        cols = [c for c in ["Phase", "Initiative", "Duration", "Cost", "Role", "Kpi"] if c in projects.columns]
-        st.dataframe(projects[cols], use_container_width=True)
-    else:
-        st.info(txt["ui"]["no_data"])
+# render_roadmap_tab function removed - implementation timeline table no longer used
 
 
 # =============================================================================

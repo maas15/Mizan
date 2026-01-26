@@ -391,7 +391,7 @@ DT_BENCHMARKS: Dict[str, Dict[str, Any]] = {
             "top_quartile": 75,
             "bottom_quartile": 40,
             "saudi_average": 65,
-            "source": "UN E-Government Survey, YESSER Digital Government Reports"
+            "source": "UN E-Government Survey, DGA Digital Government Authority Reports"
         },
         "Healthcare": {
             "average": 52,
