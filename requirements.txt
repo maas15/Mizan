@@ -1,43 +1,21 @@
-# Mizan GRC - Requirements
-# AI-Driven Enterprise GRC Solution
+# Mizan GRC - Flask Application Requirements
+# Created by: Eng. Mohammad Abbas Alsaadon
 
 # Web Framework
-streamlit>=1.28.0
+Flask>=3.0.0
+Werkzeug>=3.0.0
 
-# AI Integration (Primary)
-openai>=1.0.0
-
-# HTTP Client (Fallback for AI calls)
-requests>=2.31.0
-
-# Data Processing
-pandas>=2.0.0
-numpy>=1.24.0
-
-# Document Generation
-python-docx>=0.8.11
-openpyxl>=3.1.0
-reportlab>=4.0.0
-
-# PDF Processing
-PyPDF2>=3.0.0
-pdfplumber>=0.9.0
-
-# Image Processing
-Pillow>=10.0.0
-
-# Utilities
+# Environment Variables
 python-dotenv>=1.0.0
 
-# Database
-# SQLite is built-in, no additional package needed
+# OpenAI Integration
+openai>=1.12.0
+
+# Word Document Generation
+python-docx>=1.1.0
 
 # Security
-bcrypt>=4.0.0
+bcrypt>=4.1.0
 
-# Date/Time
-python-dateutil>=2.8.0
-
-# Optional: For advanced charts
-plotly>=5.15.0
-matplotlib>=3.7.0
+# Utilities
+requests>=2.31.0
