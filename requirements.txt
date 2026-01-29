@@ -5,6 +5,9 @@
 Flask>=3.0.0
 Werkzeug>=3.0.0
 
+# Production Server
+gunicorn>=21.0.0
+
 # Environment Variables
 python-dotenv>=1.0.0
 
